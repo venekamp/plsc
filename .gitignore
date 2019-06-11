@@ -1,5 +1,6 @@
 __pycache__/
 bin/
+docker/
 include/
 lib/
 plsc.yml
