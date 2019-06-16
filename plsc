@@ -47,6 +47,8 @@ for service, cos in rsc_sp.items():
             dst_entry['sn'] = src_entry['sn']
             dst_entry['homeDirectory'] = ['/home/{}'.format(src_uid)]
             dst_entry['eduPersonPrincipalName'] = src_entry['eduPersonPrincipalName']
+            if 'mail' in src_entry:
+                dst_entry['mail'] = src_entry['mail']
 
             dst_dns = dst.rfind("ou=People,o={},ou={}".format(co_id, service), "(&(ObjectClass=person)(uid={}))".format(src_uid))
 
