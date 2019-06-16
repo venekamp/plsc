@@ -22,17 +22,21 @@ services = util.find_services(src)
 collaborations = util.find_collaborations(src, services)
 #print("collaborations: {}".format(collaborations))
 
-for client_name, cos in collaborations.items():
+rsc_sp = { 'COs':
+          collaborations['https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata']
+         }
+
+for client_name, cos in rsc_sp.items():
     print("client: {}".format(client_name))
 
-    dc = client_name
-    dc_dn = 'dc=' + dc + ',' + dst.basedn
-    dc_entry = {'objectClass':['dcObject','organization'],'o':[dc]}
+    ou_rsc_dn = 'ou=' + client_name + ',' + dst.basedn
+    ou_rsc_entry = {'objectClass':['organizationalUnit']}
+    print(ou_rsc_entry)
 
     #print("dc_dn: {}".format(dc_dn))
-    dst.add(dc_dn, dc_entry)
+    dst.add(ou_rsc_dn, ou_rsc_entry)
 
-    admin_dn = 'cn=admin,' + dc_dn
+    admin_dn = 'cn=admin,' + ou_rsc_dn
     pwd = util.make_secret(config['pwd'])
     admin_entry = {'objectClass':['organizationalRole','simpleSecurityObject'],'userPassword':[pwd]}
     #print("  admin_dn: {}".format(admin_dn))
@@ -60,7 +64,7 @@ for client_name, cos in collaborations.items():
             o = description['comanage_id']
         else:
             o = entry['o'][0]
-        co_dn = 'o=' + o + ',' + dc_dn
+        co_dn = 'o=' + o + ',' + ou_rsc_dn
         co_entry = {'objectClass':['top','organization','extensibleObject'],'o':[o],'description':[co]}
         dst.add(co_dn, co_entry)
         print("co: " + co_dn)

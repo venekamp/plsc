@@ -19,9 +19,15 @@ dst = Connection(config['ldap']['dst'])
 services = util.find_services(src)
 collaborations = util.find_collaborations(src, services)
 
+rsc_sp = { 'COs':
+          collaborations['https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata']
+         }
+
+print(rsc_sp)
+
 # Create phase
 print("--- Create ---")
-for service, cos in collaborations.items():
+for service, cos in rsc_sp.items():
     print("service: {}".format(service))
     for co_name, co_id in cos:
         co_id = co_id[0]
@@ -35,13 +41,14 @@ for service, cos in collaborations.items():
 
             # Here's the magic: Build the new person entry
             dst_entry = {}
-            dst_entry['objectClass'] = ['inetOrgPerson', 'person', 'posixAccount']
+            dst_entry['objectClass'] = ['inetOrgPerson', 'person', 'posixAccount', 'eduPerson']
             dst_entry['uid'] = [src_uid]
             dst_entry['cn'] = src_entry['cn']
             dst_entry['sn'] = src_entry['sn']
             dst_entry['homeDirectory'] = ['/home/{}'.format(src_uid)]
+            dst_entry['eduPersonPrincipalName'] = src_entry['eduPersonPrincipalName']
 
-            dst_dns = dst.rfind("ou=People,o={},dc={}".format(co_id, service), "(&(ObjectClass=person)(uid={}))".format(src_uid))
+            dst_dns = dst.rfind("ou=People,o={},ou={}".format(co_id, service), "(&(ObjectClass=person)(uid={}))".format(src_uid))
 
             if len(dst_dns) == 1:
                 dst_dn, old_entry = list(dst_dns.items())[0]
@@ -52,11 +59,11 @@ for service, cos in collaborations.items():
                 print("    - mod: {}".format(ldif))
 
             elif len(dst_dns) == 0:
-                uid = dst.get_sequence("cn=uidNumberSequence,ou=Sequence,o={},dc={},{}".format(co_id, service, dst.basedn))
+                uid = dst.get_sequence("cn=uidNumberSequence,ou=Sequence,o={},ou={},{}".format(co_id, service, dst.basedn))
                 dst_entry['uidNumber'] = [str(uid)]
-                gid = dst.get_sequence("cn=gidNumberSequence,ou=Sequence,o={},dc={},{}".format(co_id, service, dst.basedn))
+                gid = dst.get_sequence("cn=gidNumberSequence,ou=Sequence,o={},ou={},{}".format(co_id, service, dst.basedn))
                 dst_entry['gidNumber'] = [str(gid)]
-                dst_dn = "uid={},ou=People,o={},dc={},{}".format(src_uid, co_id,service,dst.basedn)
+                dst_dn = "uid={},ou=People,o={},ou={},{}".format(src_uid, co_id, service, dst.basedn)
                 ldif = dst.add(dst_dn, dst_entry)
                 print("    - add: {}".format(ldif))
 
@@ -78,7 +85,7 @@ for service, cos in collaborations.items():
             dst_entry = {}
             dst_entry['objectClass'] = ['extensibleObject', 'posixGroup', 'sczGroup']
             dst_entry['cn'] = [dst_cn]
-            dst_entry['description'] = [src_cn]
+            dst_entry['displayName'] = [src_cn]
 
             members = []
 
@@ -87,10 +94,10 @@ for service, cos in collaborations.items():
                 member_rdns = util.dn2rdns(member)
                 # Is member user?
                 if member_rdns.get('uid', None):
-                    dns = dst.rfind("ou=People,o={},dc={}".format(co_id, service), "(uid={})".format(member_rdns['uid'][0]))
+                    dns = dst.rfind("ou=People,o={},ou={}".format(co_id, service), "(uid={})".format(member_rdns['uid'][0]))
                 # member is group?
                 elif member_rdns.get('cn', None):
-                    dns = dst.rfind("ou=Groups,o={},dc={}".format(co_id, service), "(description={})".format(member_rdns['cn'][0]))
+                    dns = dst.rfind("ou=Groups,o={},ou={}".format(co_id, service), "(description={})".format(member_rdns['cn'][0]))
 
                 if len(dns) == 1:
                     member_dst_dn, member_dst_entry = list(dns.items())[0]
@@ -98,7 +105,7 @@ for service, cos in collaborations.items():
 
             dst_entry['sczMember'] = members
 
-            dst_dns = dst.rfind("ou=Groups,o={},dc={}".format(co_id, service), "(&(ObjectClass=posixGroup)(description={}))".format(src_cn))
+            dst_dns = dst.rfind("ou=Groups,o={},ou={}".format(co_id, service), "(&(ObjectClass=posixGroup)(description={}))".format(src_cn))
 
             if len(dst_dns) == 1:
                 dst_dn, old_entry = list(dst_dns.items())[0]
@@ -109,9 +116,9 @@ for service, cos in collaborations.items():
                 print("    - mod: {}".format(ldif))
 
             elif len(dst_dns) == 0:
-                gid = dst.get_sequence("cn=gidNumberSequence,ou=Sequence,o={},dc={},{}".format(co_id, service, dst.basedn))
+                gid = dst.get_sequence("cn=gidNumberSequence,ou=Sequence,o={},ou={},{}".format(co_id, service, dst.basedn))
                 dst_entry['gidNumber'] = [str(gid)]
-                dst_dn = "cn={},ou=Groups,o={},dc={},{}".format(dst_cn, co_id, service, dst.basedn)
+                dst_dn = "cn={},ou=Groups,o={},ou={},{}".format(dst_cn, co_id, service, dst.basedn)
                 ldif = dst.add(dst_dn, dst_entry)
                 print("    - add: {}".format(ldif))
 
@@ -120,12 +127,13 @@ for service, cos in collaborations.items():
 
         print()
 
+sys.exit()
 # Cleanup phase
 print("--- Cleanup ---")
-for service, cos in collaborations.items():
+for service, cos in rsc_sp.items():
     print("service: {}".format(service))
 
-    organizations = dst.rfind("dc={}".format(service), '(&(objectClass=organization)(objectClass=extensibleObject))')
+    organizations = dst.rfind("ou={}".format(service), '(&(objectClass=organization)(objectClass=extensibleObject))')
     for o_dn, o_entry in organizations.items():
         #print("o: {}".format(o_dn))
         #print("entry: {}".format(o_entry))
@@ -137,7 +145,7 @@ for service, cos in collaborations.items():
             print("- o: {}".format(o_rdns['o'][0]))
 
             print("  - People")
-            dst_dns = dst.rfind("ou=People,o={},dc={}".format(o_rdns['o'][0], service), '(objectClass=person)')
+            dst_dns = dst.rfind("ou=People,o={},ou={}".format(o_rdns['o'][0], service), '(objectClass=person)')
             for dst_dn, dst_entry in dst_dns.items():
                 #print("  - dstdn: {}".format(dst_dn))
                 #print("    entry: {}".format(dst_entry))
@@ -155,7 +163,7 @@ for service, cos in collaborations.items():
                         dst.delete(dst_dn)
 
             print("\n  - Groups")
-            dst_dns = dst.rfind("ou=Groups,o={},dc={}".format(o_rdns['o'][0], service), '(objectClass=sczGroup)')
+            dst_dns = dst.rfind("ou=Groups,o={},ou={}".format(o_rdns['o'][0], service), '(objectClass=sczGroup)')
             for dst_dn, dst_entry in dst_dns.items():
                 #print("  - dstdn: {}".format(dst_dn))
                 #print("    entry: {}".format(dst_entry))
