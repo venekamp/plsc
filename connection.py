@@ -1,4 +1,6 @@
-import ldap, ldap.modlist
+import ldap
+import ldap.modlist
+
 
 class Connection(object):
 
@@ -10,7 +12,7 @@ class Connection(object):
 
     def __init__(self, config):
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
-        ldap.set_option( ldap.OPT_X_TLS_DEMAND, True )
+        ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
         self.basedn = config['basedn']
         uri = config['uri']
@@ -74,7 +76,8 @@ class Connection(object):
         return addlist
 
     def modify(self, dn, old_entry, new_entry):
-        modlist = ldap.modlist.modifyModlist(self.__encode(old_entry), self.__encode(new_entry))
+        modlist = ldap.modlist.modifyModlist(
+            self.__encode(old_entry), self.__encode(new_entry))
         try:
             self.__c.modify_s(dn, modlist)
         except Exception as e:
@@ -96,6 +99,6 @@ class Connection(object):
             old_entry = self.__decode(old_entry)
             new_entry = old_entry.copy()
             seq = int(new_entry['serialNumber'][0]) + 1
-            new_entry['serialNumber'] = [ str(seq) ]
+            new_entry['serialNumber'] = [str(seq)]
             self.modify(dn, old_entry, new_entry)
         return seq
