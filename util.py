@@ -1,6 +1,9 @@
-import os, hashlib, json
+import os
+import hashlib
+import json
 import ldap
 from base64 import b64encode
+
 
 def make_secret(password):
     salt = os.urandom(4)
@@ -9,17 +12,20 @@ def make_secret(password):
     b64_digest_salt = b64encode(sha.digest() + salt).strip()
     return '{SSHA}' + b64_digest_salt.decode('utf-8')
 
+
 def dn2rdns(dn):
     rdns = {}
     r = ldap.dn.str2dn(dn)
     for rdn in r:
-        (a,v,t) = rdn[0]
+        (a, v, t) = rdn[0]
         rdns.setdefault(a, []).append(v)
     return rdns
 
+
 def find_cos(c, service):
     cos = {}
-    r = c.find(None, "(&(objectClass=organization)(labeledURI={}))".format(service), ['o','dnQualifier','description'])
+    r = c.find(None, "(&(objectClass=organization)(labeledURI={}))".format(
+        service), ['o', 'dnQualifier', 'description'])
     for dn, entry in r.items():
         rdns = dn2rdns(dn)
         j = entry.get('description', None)
@@ -41,12 +47,15 @@ def find_cos(c, service):
 
     return cos
 
+
 def find_services(c):
     services = []
-    r = c.find(None, '(&(objectClass=organization)(labeledURI=*))', ['labeledURI'])
+    r = c.find(None, '(&(objectClass=organization)(labeledURI=*))',
+               ['labeledURI'])
     for dn, entry in r.items():
         services.extend(entry['labeledURI'])
     return list(set(services))
+
 
 def find_collaborations(c, services):
     col = {}
