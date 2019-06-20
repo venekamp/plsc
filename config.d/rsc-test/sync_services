@@ -23,7 +23,7 @@ collaborations = util.find_collaborations(src, services)
 #print("collaborations: {}".format(collaborations))
 
 rsc_sp = { 'COs':
-          collaborations['https://rsc-authz.in.development.surfresearchcloud.nl/saml/metadata']
+          collaborations['https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata']
          }
 
 for client_name, cos in rsc_sp.items():

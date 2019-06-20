@@ -20,7 +20,7 @@ services = util.find_services(src)
 collaborations = util.find_collaborations(src, services)
 
 rsc_sp = { 'COs':
-          collaborations['https://rsc-authz.in.development.surfresearchcloud.nl/saml/metadata']
+          collaborations['https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata']
          }
 
 print(rsc_sp)
