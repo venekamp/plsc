@@ -41,7 +41,7 @@ for service, cos in rsc_sp.items():
 
             # Here's the magic: Build the new person entry
             dst_entry = {}
-            dst_entry['objectClass'] = ['inetOrgPerson', 'person', 'posixAccount', 'eduPerson']
+            dst_entry['objectClass'] = ['inetOrgPerson', 'person', 'posixAccount', 'eduPerson', 'ldapPublicKey']
             dst_entry['uid'] = [src_uid]
             dst_entry['cn'] = src_entry['cn']
             dst_entry['sn'] = src_entry['sn']
@@ -49,6 +49,8 @@ for service, cos in rsc_sp.items():
             dst_entry['eduPersonPrincipalName'] = src_entry['eduPersonPrincipalName']
             if 'mail' in src_entry:
                 dst_entry['mail'] = src_entry['mail']
+            if 'sshPublicKey' in src_entry:
+                dst_entry['sshPublicKey'] = src_entry['sshPublicKey']
 
             dst_dns = dst.rfind("ou=People,o={},ou={}".format(co_id, service), "(&(ObjectClass=person)(uid={}))".format(src_uid))
 
