@@ -65,9 +65,31 @@ for client_name, cos in rsc_sp.items():
         else:
             o = entry['o'][0]
         co_dn = 'o=' + o + ',' + ou_rsc_dn
-        co_entry = {'objectClass':['top','organization','extensibleObject'],'o':[o],'description':[co]}
-        dst.add(co_dn, co_entry)
-        print("co: " + co_dn)
+        co_entry = {
+            'objectClass':
+            [
+                'top',
+                'organization',
+                'extensibleObject'
+            ],
+            'o': [o],
+            'displayName': [co]
+        }
+
+        dst_dns = dst.find(co_dn, "(ObjectClass=organization)")
+
+        if len(dst_dns) == 1:
+            dst_dn, old_entry = list(dst_dns.items())[0]
+            new_entry = old_entry.copy()
+            for attr, values in co_entry.items():
+                new_entry[attr] = values
+                ldif = dst.modify(dst_dn, old_entry, new_entry)
+                if len(ldif) > 0:
+                    print("    - mod: {}".format(ldif))
+        elif len(dst_dns) == 0:
+            r = dst.add(co_dn, co_entry)
+        else:
+            print("Too many DNs found. Cannot determine if an add or modify is required.")
 
         for ou in ['Groups', 'People', 'Sequence', 'Services']:
             ou_dn = 'ou=' + ou + ',' + co_dn
