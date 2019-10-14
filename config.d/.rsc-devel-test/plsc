@@ -53,7 +53,7 @@ def build_dst_skeleton(config, dst_ldap, collaborations):
 
     for o in sorted(src_o - dst_o):
         # print("Syncing CO: {}".format(o))
-        displayName = collaborations['o={},dc=https://rsc-authz.in.development.surfresearchcloud.nl/saml/metadata_new,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
+        displayName = collaborations['o={},dc=https://rsc-authz.in.development.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
         add_ldap_structure(config, dst_ldap, o, displayName)
 
 
