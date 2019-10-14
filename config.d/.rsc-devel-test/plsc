@@ -70,7 +70,7 @@ def get_collaboration_for_service(connection, service):
     """
 
     r = connection.find(None,
-                        "(&(ObjectClass=organization)(o=*))",
+                        "(&(objectClass=organization)(o=*))",
                         ['o', 'description'],
                         ldap.SCOPE_ONELEVEL
                        )
