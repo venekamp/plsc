@@ -184,10 +184,8 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
 
             if len(dst_dns) == 1:
                 dst_dn, old_entry = list(dst_dns.items())[0]
-                new_entry = old_entry.copy()
-                for attribute, value in dst_entry.items():
-                    new_entry[attribute] = value
-                ldif = dst_ldap.modify(dst_dn, old_entry, new_entry)
+
+                ldif = dst_ldap.modify(dst_dn, old_entry, attributes)
             elif len(dst_dns) == 0:
                 dst_dn = "uid={},ou=People,o={},ou=COs,{}".format(
                     uid,
