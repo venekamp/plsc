@@ -8,7 +8,56 @@ import util
 from connection import Connection
 
 
-def get_collobrations_for_service(connection, service):
+def add_ldap_structure(config, dst_ldap, o, displayName):
+    o_entry = {
+        'objectClass': ['top', 'organization', 'extensibleObject'],
+        'o': [o],
+        'displayName': [displayName]
+    }
+    dst_ldap.add("o={},ou=COs,{}".format(o, dst_ldap.basedn), o_entry)
+
+    o_dn = "o={},ou=COs,{}".format(o, dst_ldap.basedn)
+    for ou in ['Groups', 'People', 'Sequence']:
+        ou_dn = "ou={},{}".format(ou, o_dn)
+        ou_entry = {
+            'objectClass': ['organizationalUnit', 'top'],
+            'ou': [ou]
+        }
+        dst_ldap.add(ou_dn, ou_entry)
+
+    for seq_number in ['uid', 'gid']:
+        uid_dn = 'cn={}NumberSequence,ou=Sequence,{}'.format(seq_number, o_dn)
+        uid_entry = {
+            'objectClass': ['top','device'],
+            'serialNumber': [str(read_key_from_config(config, seq_number))]
+        }
+        dst_ldap.add(uid_dn, uid_entry)
+
+
+def retreive_all_dest_organisations(l):
+    dns = l.rfind("ou=COs", "o=*", ['o'])
+
+    s = set()
+    for v in dns.values():
+        s.add(v['o'][0])
+
+    return s
+
+
+def build_dst_skeleton(config, dst_ldap, collaborations):
+    src_o = set()
+    for k in collaborations.keys():
+        src_o.add(util.dn2rdns(k)['o'][0])
+
+    dst_o = retreive_all_dest_organisations(dst_ldap)
+
+    for o in sorted(src_o - dst_o):
+        # print("Syncing CO: {}".format(o))
+        displayName = collaborations['o={},dc=https://rsc-authz.in.development.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
+        add_ldap_structure(config, dst_ldap, o, displayName)
+
+
+def get_collaboration_for_service(connection, service):
     """ Given a service determine all COs that are part of it
     and return the found COs.
 
@@ -21,18 +70,18 @@ def get_collobrations_for_service(connection, service):
     """
 
     r = connection.find(None,
-                        "(&(ObjectClass=organization)(o=*))",
+                        "(&(objectClass=organization)(o=*))",
                         ['o', 'description'],
                         ldap.SCOPE_ONELEVEL
                        )
     cos = {}
 
-    for dn, attrinutes in r.items():
+    for dn, attributes in r.items():
         rdns = util.dn2rdns(dn)
         co_id = dn
 
         l = {}
-        for name, value in attrinutes.items():
+        for name, value in attributes.items():
             if 'description' in name:
                 l[name] = value[0]
 
@@ -40,223 +89,149 @@ def get_collobrations_for_service(connection, service):
 
     return cos
 
-if len(sys.argv) < 2:
-    sys.exit(sys.argv[0] + "  <conf.yml>")
-    exit()
 
-with open(sys.argv[1]) as f:
-  config = yaml.safe_load(f)
+def read_config_file():
+    """Read a YAML config file."""
 
-service = (util.dn2rdns(config['ldap']['src']['basedn'])['dc'])[0]
+    if len(sys.argv) < 2:
+        print("Missing config file.")
+        print("usage: {} <config_file.yml>".format(sys.argv[0]))
+        sys.exit(2)
 
-src = Connection(config['ldap']['src'])
-dst = Connection(config['ldap']['dst'])
+    with open(sys.argv[1]) as f:
+        config = yaml.safe_load(f)
 
-collaborations = get_collobrations_for_service(src, service)
+    return config
 
-# Create phase
-print("--- Create ---")
-for service, cos in collaborations.items():
-    # print("s: {:.20}".format(service))
-    # print("c: {}".format(cos))
 
-    co_id = util.dn2rdns(service)['o'][0]
-    # print("co_id: {}".format(co_id))
+def read_key_from_config(config, key):
+    """
+    Recursively find the key in the config file and return the
+    associated value.
+    """
+
+    if type(key) is str:
+        if key not in config:
+            raise KeyError("{} not found in config file.".format(key))
+        return config[key]
+
+    k, v = next(iter(key.items()))
+    a = read_key_from_config(config[k], v)
+
+    return a
+
+
+def get_service_from_config(config):
+    """Get the service identifier from the config."""
+    value = read_key_from_config(config, {'ldap': {'src': 'basedn'}})
+
+    return util.dn2rdns(value)['dc'][0]
+
+
+def generate_dest_people_entry_from_src_entry(dn, attributes):
+    rdns = util.dn2rdns(dn)
+    uid = rdns['uid'][0]
 
     dst_entry = {}
-    dst_entry['displayName'] = cos['description']
-
-    basedn = "ou=People,o={}".format(co_id)
-    src_dns = src.rfind(basedn, "(ObjectClass=person)")
-    src_attr_values = src_dns.values()
-
     dst_entry['objectClass'] = ['inetOrgPerson', 'person', 'posixAccount']
-    dst_entry['uid'] = list(src_attr_values)[0]
-    for v in src_attr_values:
-        if 'mail' in v:
-            dst_entry['mail'] = v['mail']
+    dst_entry['uid'] = [uid]
+    dst_entry['cn'] = attributes['cn']
+    dst_entry['sn'] = attributes['sn']
+    dst_entry['homeDirectory'] = attributes['homeDirectory']
+    dst_entry['uidNumber'] = attributes['uidNumber']
+    dst_entry['gidNumber'] = attributes['gidNumber']
 
-        if 'sshPublicKey' in v:
-            dst_entry['objectClass'].append('ldapPublicKey')
-            dst_entry['sshPublicKey'] = v['sshPublicKey']
+    if 'sshPublicKey' in attributes:
+        dst_entry['objectClass'].append('ldapPublicKey')
+        dst_entry['sshPublicKey'] = attributes['sshPublicKey']
 
-        if 'eduPersonPrincipalName' in v:
-            dst_entry['objectClass'].append('eduPerson')
-            dst_entry['eduPersonPrincipalName'] = v['eduPersonPrincipalName']
+    if 'eduPersonPrincipleName' in attributes:
+        dst_entry['objectClass'].append('eduPerson')
+        dst_entry['eduPersonPrincipleName'] = attributes['eduPersonPrincipleName']
 
-    print(dst_entry)
-    continue
-    if True:
-        co_name = co_name[0]
+    if 'mail' in attributes:
+        dst_entry['mail'] = attributes['mail']
 
-        co_id = {}
-        print("- co: {}/{}".format(co_name, co_id))
-        print("  People")
+    return uid, dst_entry
 
-        basedn = "ou=People,o={},dc={}".format(co_id, service)
-        src_dns = src.rfind(basedn, '(ObjectClass=person)')
 
-        for src_dn, src_entry in src_dns.items():
-            print("  - srcdn: {}".format(src_dn))
-            src_uid = src_entry['uid'][0]
+def generate_dest_group_entry_from_src_entry(attributes):
+    dst_entry = {}
+    cn = attributes['cn'][0]
+    dst_entry['objectClass'] = ['posixGroup']
+    dst_entry['gidNumber'] = attributes['gidNumber']
+    dst_entry['cn'] = [cn]
 
-            # Here's the magic: Build the new person entry
-            dst_entry = {}
-            dst_entry['objectClass'] = ['inetOrgPerson', 'person', 'posixAccount']
-            dst_entry['uid'] = [src_uid]
-            dst_entry['cn'] = src_entry['cn']
-            dst_entry['sn'] = src_entry['sn']
-            dst_entry['homeDirectory'] = ['/home/{}'.format(src_uid)]
+    return dst_entry
 
-            if 'sshPublicKey' in src_entry:
-               dst_entry['objectClass'].append('ldapPublicKey')
-               dst_entry['sshPublicKey'] = src_entry['sshPublicKey']
 
-            if 'eduPersonPrincipalName' in src_entry:
-                dst_entry['objectClass'].append('eduPerson')
-                dst_entry['eduPersonPrincipalName'] = src_entry['eduPersonPrincipalName']
+def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
+    for k,v in collaborations.items():
+        o = util.dn2rdns(k)['o'][0]
 
-            if 'mail' in src_entry:
-                dst_entry['mail'] = src_entry['mail']
+        src_entry = src_ldap.rfind(
+            "ou=People,o={}".format(o),
+            "(objectClass=person)"
+        )
 
-            basedn = "ou=People,o={},ou=COs".format(co_id)
-            dst_dns = dst.rfind(basedn, "(&(ObjectClass=person)(uid={}))".format(src_uid))
+        for dn, attributes in src_entry.items():
+            uid, dst_entry = generate_dest_people_entry_from_src_entry(dn, attributes)
+
+            dst_dns = dst_ldap.rfind(
+                "ou=People,o={},ou=COs".format(o),
+                "(&(objectClass=person)(uid={}))".format(uid)
+            )
 
             if len(dst_dns) == 1:
                 dst_dn, old_entry = list(dst_dns.items())[0]
-                new_entry = old_entry.copy()
-                for attr, values in dst_entry.items():
-                    new_entry[attr] = values
-                ldif = dst.modify(dst_dn, old_entry, new_entry)
-                print("    - mod: {}".format(ldif))
 
+                ldif = dst_ldap.modify(dst_dn, old_entry, attributes)
             elif len(dst_dns) == 0:
-                uid = dst.get_sequence("cn=uidNumberSequence,ou=Sequence,o={},ou=COs,{}".format(co_id, dst.basedn))
-                dst_entry['uidNumber'] = [str(uid)]
-                gid = dst.get_sequence("cn=gidNumberSequence,ou=Sequence,o={},ou=COs,{}".format(co_id, dst.basedn))
-                dst_entry['gidNumber'] = [str(gid)]
-                dst_dn = "uid={},ou=People,o={},ou={},{}".format(src_uid, co_id, service, dst.basedn)
-                ldif = dst.add(dst_dn, dst_entry)
-                print("    - add: {}".format(ldif))
-
+                dst_dn = "uid={},ou=People,o={},ou=COs,{}".format(
+                    uid,
+                    o,
+                    dst_ldap.basedn
+                )
+                ldif = dst_ldap.add(dst_dn, dst_entry)
             else:
-                print("    - Too many dstdn's")
+                print("Too many destination dns.")
 
-        print("\n  Groups")
-        src_dns = src.rfind('ou=Groups,o={},dc={}'.format(co_id, service), '(&(objectClass=groupOfNames)(!(objectClass=labeledURIObject))(!(cn=GRP:CO:*)))')
-        for src_dn, src_entry in src_dns.items():
-            print("  - srcdn: {}".format(src_dn))
-            src_rdns = util.dn2rdns(src_dn)
-            src_cn = src_rdns['cn'][0]
-            src_type = src_entry['ou'][0]
+        src_dns = src_ldap.rfind(
+            "ou=Groups,o={}".format(o),
+            "(objectClass=posixGroup)",
+            ['gidNumber', 'cn']
+        )
 
-            # Here's the magic: Build the new group entry
-            m = re.search('^(?:GRP)?(?:CO)?(?:COU)?:(.*?)$', src_cn)
-            dst_cn = src_type + "_" + m.group(1) if m.group(1) else ""
+        group_dns = dst_ldap.rfind(
+            "ou=Groups,o={},ou=COs".format(o),
+            "(objectClass=posixGroup)"
+        )
 
-            dst_entry = {}
-            dst_entry['objectClass'] = ['extensibleObject', 'posixGroup', 'sczGroup']
-            dst_entry['cn'] = [dst_cn]
-            dst_entry['displayName'] = [src_cn]
+        for dn, attributes in src_dns.items():
+            dst_entry = generate_dest_group_entry_from_src_entry(attributes)
 
-            members = []
-
-            # Build members
-            for member in src_entry['member']:
-                member_rdns = util.dn2rdns(member)
-                # Is member user?
-                if member_rdns.get('uid', None):
-                    dns = dst.rfind("ou=People,o={},ou=COs".format(co_id), "(uid={})".format(member_rdns['uid'][0]))
-                # member is group?
-                elif member_rdns.get('cn', None):
-                    dns = dst.rfind("ou=Groups,o={},ou=COs".format(co_id), "(description={})".format(member_rdns['cn'][0]))
-
-                if len(dns) == 1:
-                    member_dst_dn, member_dst_entry = list(dns.items())[0]
-                    members.append(member_dst_dn)
-
-            dst_entry['sczMember'] = members
-
-            dst_dns = dst.rfind("ou=Groups,o={},ou=COs".format(co_id), "(&(ObjectClass=posixGroup)(description={}))".format(src_cn))
-
-            if len(dst_dns) == 1:
-                dst_dn, old_entry = list(dst_dns.items())[0]
-                new_entry = old_entry.copy()
-                for attr, values in dst_entry.items():
-                    new_entry[attr] = values
-                    ldif = dst.modify(dst_dn, old_entry, new_entry)
-                print("    - mod: {}".format(ldif))
-
-            elif len(dst_dns) == 0:
-                gid = dst.get_sequence("cn=gidNumberSequence,ou=Sequence,o={},ou=COs,{}".format(co_id, dst.basedn))
-                dst_entry['gidNumber'] = [str(gid)]
-                dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(dst_cn, co_id, dst.basedn)
-
-                print()
-                print("dst_dn: {}".format(dst_dn))
-                print("dst_entry: {}".format(dst_entry))
-                print()
-
-                ldif = dst.add(dst_dn, dst_entry)
-                print("    - add: {}".format(ldif))
-
-            else:
-                print("    - Too many dstdn's")
-
-        print()
-
-sys.exit()
-# Cleanup phase
-print("--- Cleanup ---")
-for service, cos in rsc_sp.items():
-    print("service: {}".format(service))
-
-    organizations = dst.rfind("ou={}".format(service), '(&(objectClass=organization)(objectClass=extensibleObject))')
-    for o_dn, o_entry in organizations.items():
-        #print("o: {}".format(o_dn))
-        #print("entry: {}".format(o_entry))
-
-        if o_entry.get('description', None):
-            co_name = o_entry['description'][0]
-
-            o_rdns = util.dn2rdns(o_dn)
-            print("- o: {}".format(o_rdns['o'][0]))
-
-            print("  - People")
-            dst_dns = dst.rfind("ou=People,o={},ou={}".format(o_rdns['o'][0], service), '(objectClass=person)')
-            for dst_dn, dst_entry in dst_dns.items():
-                #print("  - dstdn: {}".format(dst_dn))
-                #print("    entry: {}".format(dst_entry))
-
-                if dst_entry.get('uid', None):
-                    src_uid = dst_entry['uid'][0]
-                    src_dns = src.rfind("ou=People,o={}".format(co_name), '(uid={})'.format(src_uid))
-                    if len(src_dns):
-                        for src_dn, src_entry in src_dns.items():
-                            pass
-                            #print("   - srcdn: {}".format(src_dn))
-                    else:
-                        print("    - dstdn: {}".format(dst_dn))
-                        print("      srcdn not found, deleting {}".format(dst_dn))
-                        dst.delete(dst_dn)
-
-            print("\n  - Groups")
-            dst_dns = dst.rfind("ou=Groups,o={},ou={}".format(o_rdns['o'][0], service), '(objectClass=sczGroup)')
-            for dst_dn, dst_entry in dst_dns.items():
-                #print("  - dstdn: {}".format(dst_dn))
-                #print("    entry: {}".format(dst_entry))
-
-                if dst_entry.get('description', None):
-                    src_cn = dst_entry['description'][0]
-                    src_dns = src.rfind("ou=Groups,o={}".format(co_name), '(cn={})'.format(src_cn))
-                    if len(src_dns):
-                        for src_dn, src_entry in src_dns.items():
-                            pass
-                            #print("   - srcdn: {}".format(src_dn))
-                    else:
-                        print("    - dstdn: {}".format(dst_dn))
-                        print("      srcdn not found, deleting {}".format(dst_dn))
-                        dst.delete(dst_dn)
+            dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(
+                attributes['cn'][0],
+                o,
+                dst_ldap.basedn
+            )
+            if dst_dn not in group_dns:
+                ldif = dst_ldap.add(dst_dn, dst_entry)
 
 
-            print()
+if __name__ == "__main__":
+    """
+    Connect to both the source and destination LDAP and sync the two.
+    """
+
+    config = read_config_file()
+
+    src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}))
+    dst_ldap = Connection(read_key_from_config(config, {'ldap': 'dst'}))
+
+    service = get_service_from_config(config)
+    collaborations = get_collaboration_for_service(src_ldap, service)
+
+    build_dst_skeleton(config, dst_ldap, collaborations)
+
+    sync_rsc_with_scz(src_ldap, dst_ldap, collaborations)

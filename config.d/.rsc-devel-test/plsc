@@ -7,6 +7,10 @@ import ldap
 import util
 from connection import Connection
 
+from jumpcloud import JumpCloud
+
+global jumpcloud
+
 
 def add_ldap_structure(config, dst_ldap, o, displayName):
     o_entry = {
@@ -34,7 +38,7 @@ def add_ldap_structure(config, dst_ldap, o, displayName):
         dst_ldap.add(uid_dn, uid_entry)
 
 
-def retreive_all_dest_organisations(l):
+def retrieve_all_dest_organisations(l):
     dns = l.rfind("ou=COs", "o=*", ['o'])
 
     s = set()
@@ -49,11 +53,11 @@ def build_dst_skeleton(config, dst_ldap, collaborations):
     for k in collaborations.keys():
         src_o.add(util.dn2rdns(k)['o'][0])
 
-    dst_o = retreive_all_dest_organisations(dst_ldap)
+    dst_o = retrieve_all_dest_organisations(dst_ldap)
 
     for o in sorted(src_o - dst_o):
         # print("Syncing CO: {}".format(o))
-        displayName = collaborations['o={},dc=https://rsc-authz.in.development.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
+        displayName = collaborations['o={},dc=https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
         add_ldap_structure(config, dst_ldap, o, displayName)
 
 
@@ -128,6 +132,8 @@ def get_service_from_config(config):
     return util.dn2rdns(value)['dc'][0]
 
 
+persons = {}
+
 def generate_dest_people_entry_from_src_entry(dn, attributes):
     rdns = util.dn2rdns(dn)
     uid = rdns['uid'][0]
@@ -162,7 +168,16 @@ def generate_dest_group_entry_from_src_entry(attributes):
     dst_entry['gidNumber'] = attributes['gidNumber']
     dst_entry['cn'] = [cn]
 
-    return dst_entry
+    members = []
+
+    if 'sczMember' in attributes:
+        for i in attributes['sczMember']:
+           rdns = util.dn2rdns(i)
+           if 'uid' in rdns:
+             uid = rdns['uid'][0]
+             members.append(uid)
+
+    return dst_entry, members
 
 
 def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
@@ -177,6 +192,11 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
         for dn, attributes in src_entry.items():
             uid, dst_entry = generate_dest_people_entry_from_src_entry(dn, attributes)
 
+            # Store this user in temporary cache, for later use when we need to instantiate JumpCloud User
+            # based on these same attributes
+            persons[uid] = dst_entry
+
+            # Now continue with provisioning the LDAP
             dst_dns = dst_ldap.rfind(
                 "ou=People,o={},ou=COs".format(o),
                 "(&(objectClass=person)(uid={}))".format(uid)
@@ -199,24 +219,43 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
         src_dns = src_ldap.rfind(
             "ou=Groups,o={}".format(o),
             "(objectClass=posixGroup)",
-            ['gidNumber', 'cn']
-        )
-
-        group_dns = dst_ldap.rfind(
-            "ou=Groups,o={},ou=COs".format(o),
-            "(objectClass=posixGroup)"
+            ['gidNumber', 'cn', 'sczMember']
         )
 
         for dn, attributes in src_dns.items():
-            dst_entry = generate_dest_group_entry_from_src_entry(attributes)
+            dst_entry, members = generate_dest_group_entry_from_src_entry(attributes)
+
+            group = attributes['cn'][0]
 
             dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(
-                attributes['cn'][0],
+                group,
                 o,
                 dst_ldap.basedn
             )
-            if dst_dn not in group_dns:
+
+            # Process JumpCloud Persons & Groups
+            # These are only provisoned for a specific Athorisation Group
+            if group == read_key_from_config(config, {'api': 'auth_group'}):
+                # Step 1. Provison the Persons
+                for uid in members:
+                    jumpcloud.person(**persons[uid])
+
+                # Step 2. Provision the Group
+                jumpcloud.group(group, members)
+
+            if len(members) > 0:
+               dst_entry['memberUid'] = []
+
+               for uid in members:
+                 dst_entry['memberUid'].append(uid)
+
+            dst_group = dst_ldap.find(dst_dn)
+
+            if len(dst_group) == 0:
                 ldif = dst_ldap.add(dst_dn, dst_entry)
+            else:
+                _, old_entry = list(dst_group.items())[0]
+                ldif = dst_ldap.modify(dst_dn, old_entry, dst_entry)
 
 
 if __name__ == "__main__":
@@ -229,9 +268,20 @@ if __name__ == "__main__":
     src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}))
     dst_ldap = Connection(read_key_from_config(config, {'ldap': 'dst'}))
 
+    jumpcloud = JumpCloud(
+       read_key_from_config(config, {'api': 'url'}),
+       read_key_from_config(config, {'api': 'key'})
+    )
+
+    # print(jumpcloud)
+
     service = get_service_from_config(config)
     collaborations = get_collaboration_for_service(src_ldap, service)
 
     build_dst_skeleton(config, dst_ldap, collaborations)
 
     sync_rsc_with_scz(src_ldap, dst_ldap, collaborations)
+
+    # print(jumpcloud)
+
+    jumpcloud.cleanup()
