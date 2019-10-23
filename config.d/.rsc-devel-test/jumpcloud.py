@@ -3,6 +3,7 @@
 # Written by Harry Kodden <harry.kodden@surfnet.nl>
 
 import sys
+import re
 import os, yaml, json
 import uuid
 import json
@@ -10,6 +11,23 @@ import requests
 
 def equal(a, b):
     return (a.lower() == b.lower())
+
+def base_email(a):
+    return "{}@{}".format(a.rsplit('@')[0].rsplit('+')[0], a.rsplit('@')[1])
+
+def equal_email(a, b):
+    return equal(base_email(a), base_email(b))
+
+def valid_email(email):
+    if not email:
+       print("No email address found !")
+       return False
+       
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+       print("Email address: {} is not valid !".format(email))
+       return False
+
+    return True
 
 class JumpCloud(object):
 
@@ -19,6 +37,7 @@ class JumpCloud(object):
 
     persons = {}
     groups = {}
+    foreign_uid = {}
 
     def __init__(self, url, key, grp=None):
       self.url = url
@@ -68,15 +87,36 @@ class JumpCloud(object):
 
       return None
 
-    def compare(self, a, b):
-       return [c for c in a] == [c for c in b]
 
-    def lookup_person(self, username):
+    def username(self, firstname, lastname):
+        n = 0
+
+        suggestion = "{}.{}".format(firstname, lastname).lower().replace(' ','')
+
+        while True:
+          if suggestion.startswith("."):
+             suggestion = suggestion[1:]
+
+          collision = False
+          for uid in self.persons.keys():
+            if equal(self.persons[uid]['record']['username'], suggestion):
+               collision = True
+               break
+
+          if not collision:
+             return suggestion
+
+          n = n+1
+          suggestion = "{}.{}.{}".format(firstname, lastname, n).lower().replace(' ','')
+
+
+    def lookup_person(self, email):
       for uid in self.persons.keys():
-        if equal(self.persons[uid]['record']['username'], username):
+        if equal_email(self.persons[uid]['record']['email'], email):
           return uid
 
       return None
+
 
     def lookup_group(self, name):
       print("Lookup: {}".format(name))
@@ -86,8 +126,9 @@ class JumpCloud(object):
 
       return None
 
+
     def person(self, **kwargs):
-      username = kwargs.get('uid', [''])[0]
+      src_uid = kwargs.get('uid')[0]
       firstname = kwargs.get('givenName', [''])[0]
       lastname = kwargs.get('sn', [''])[0]
       email = kwargs.get('mail', [''])[0]
@@ -100,11 +141,13 @@ class JumpCloud(object):
         except:
           pass
 
-      if email == '':
-        print("User: {} {} is not registered as JumpCloud user, since he is not having an email address".format(firstname, lastname))
+      if not valid_email(email):
+        print("User: {} {} is not registered as JumpCloud user, since he is not having a valid email address".format(firstname, lastname))
         return
 
-      uid = self.lookup_person(username)
+      uid = self.lookup_person(email)
+
+      self.foreign_uid[src_uid] = uid
 
       if uid:
         if not equal(firstname, self.persons[uid]['record']['firstname']) or not equal(lastname, self.persons[uid]['record']['lastname']):
@@ -121,7 +164,7 @@ class JumpCloud(object):
           print("Adding person: {} {}".format(firstname, lastname))
 
           record = self.api('/api/systemusers', method='POST', data = {
-            'username': username,
+            'username': self.username(firstname, lastname),
             'email': email,
             'firstname': firstname,
             'lastname': lastname
@@ -192,7 +235,7 @@ class JumpCloud(object):
         self.groups[gid] = {'name': name, 'members': {}}
 
       for memberUid in members:
-        uid = self.lookup_person(memberUid)
+        uid = self.foreign_uid[memberUid]
 
         if not uid:
           print("member: {} is not registered as JumpCloud group member, since he is not a valid JumpCloud person".format(memberUid))

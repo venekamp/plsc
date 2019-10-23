@@ -147,6 +147,9 @@ def generate_dest_people_entry_from_src_entry(dn, attributes):
     dst_entry['uidNumber'] = attributes['uidNumber']
     dst_entry['gidNumber'] = attributes['gidNumber']
 
+    if 'givenName' in attributes:
+        dst_entry['givenName'] = attributes['givenName']
+
     if 'sshPublicKey' in attributes:
         dst_entry['objectClass'].append('ldapPublicKey')
         dst_entry['sshPublicKey'] = attributes['sshPublicKey']
