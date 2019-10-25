@@ -82,7 +82,6 @@ def get_collaboration_for_service(connection, service):
     cos = {}
 
     for dn, attributes in r.items():
-        rdns = util.dn2rdns(dn)
         co_id = dn
 
         l = {}
@@ -185,7 +184,7 @@ def generate_dest_group_entry_from_src_entry(attributes):
 
 
 def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
-    for k,v in collaborations.items():
+    for k,_ in collaborations.items():
         o = util.dn2rdns(k)['o'][0]
 
         src_entry = src_ldap.rfind(
@@ -209,14 +208,14 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
             if len(dst_dns) == 1:
                 dst_dn, old_entry = list(dst_dns.items())[0]
 
-                ldif = dst_ldap.modify(dst_dn, old_entry, attributes)
+                dst_ldap.modify(dst_dn, old_entry, attributes)
             elif len(dst_dns) == 0:
                 dst_dn = "uid={},ou=People,o={},ou=COs,{}".format(
                     uid,
                     o,
                     dst_ldap.basedn
                 )
-                ldif = dst_ldap.add(dst_dn, dst_entry)
+                dst_ldap.add(dst_dn, dst_entry)
             else:
                 print("Too many destination dns.")
 
@@ -259,10 +258,10 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
             dst_group = dst_ldap.find(dst_dn)
 
             if len(dst_group) == 0:
-                ldif = dst_ldap.add(dst_dn, dst_entry)
+                dst_ldap.add(dst_dn, dst_entry)
             else:
                 _, old_entry = list(dst_group.items())[0]
-                ldif = dst_ldap.modify(dst_dn, old_entry, dst_entry)
+                dst_ldap.modify(dst_dn, old_entry, dst_entry)
 
 
 if __name__ == "__main__":
