@@ -55,6 +55,7 @@ def build_dst_skeleton(config, dst_ldap, collaborations):
 
     dst_o = retrieve_all_dest_organisations(dst_ldap)
 
+    print(dst_o)
     for o in sorted(src_o - dst_o):
         # print("Syncing CO: {}".format(o))
         displayName = collaborations['o={},dc=https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
@@ -238,13 +239,16 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
 
             # Process JumpCloud Persons & Groups
             # These are only provisoned for a specific Athorisation Group
-            if group == read_key_from_config(config, {'api': 'auth_group'}):
-                # Step 1. Provison the Persons
-                for uid in members:
-                    jumpcloud.person(**persons[uid])
+            try:
+                if group == read_key_from_config(config, {'api': 'auth_group'}):
+                    # Step 1. Provison the Persons
+                    for uid in members:
+                        jumpcloud.person(**persons[uid])
 
-                # Step 2. Provision the Group
-                jumpcloud.group(group, members)
+                    # Step 2. Provision the Group
+                    jumpcloud.group(group, members)
+            except Exception as e:
+                print("Skipping JumpCloud because of: {}".format(e))
 
             if len(members) > 0:
                dst_entry['memberUid'] = []
@@ -271,12 +275,18 @@ if __name__ == "__main__":
     src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}))
     dst_ldap = Connection(read_key_from_config(config, {'ldap': 'dst'}))
 
-    jumpcloud = JumpCloud(
-       read_key_from_config(config, {'api': 'url'}),
-       read_key_from_config(config, {'api': 'key'})
-    )
+    jumpcloud = None
 
-    # print(jumpcloud)
+    try:
+        jumpcloud = JumpCloud(
+           read_key_from_config(config, {'api': 'url'}),
+           read_key_from_config(config, {'api': 'key'})
+        )
+
+        # print(jumpcloud)
+    except Exception as e:
+        print("Skipping jumpcloud because of: {}".format(e))
+
 
     service = get_service_from_config(config)
     collaborations = get_collaboration_for_service(src_ldap, service)
@@ -285,6 +295,7 @@ if __name__ == "__main__":
 
     sync_rsc_with_scz(src_ldap, dst_ldap, collaborations)
 
-    # print(jumpcloud)
 
-    jumpcloud.cleanup()
+    if jumpcloud is not None:
+        # print(jumpcloud)
+        jumpcloud.cleanup()
