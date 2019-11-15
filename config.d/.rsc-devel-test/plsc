@@ -154,9 +154,9 @@ def generate_dest_people_entry_from_src_entry(dn, attributes):
         dst_entry['objectClass'].append('ldapPublicKey')
         dst_entry['sshPublicKey'] = attributes['sshPublicKey']
 
-    if 'eduPersonPrincipleName' in attributes:
+    if 'eduPersonPrincipalName' in attributes:
         dst_entry['objectClass'].append('eduPerson')
-        dst_entry['eduPersonPrincipleName'] = attributes['eduPersonPrincipleName']
+        dst_entry['eduPersonPrincipalName'] = attributes['eduPersonPrincipalName']
 
     if 'mail' in attributes:
         dst_entry['mail'] = attributes['mail']
