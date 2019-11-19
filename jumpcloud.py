@@ -22,7 +22,7 @@ def valid_email(email):
     if not email:
        print("No email address found !")
        return False
-       
+
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
        print("Email address: {} is not valid !".format(email))
        return False
