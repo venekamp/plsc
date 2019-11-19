@@ -174,7 +174,7 @@ class JumpCloud(object):
             uid = record.get('_id', None)
 
           if uid:
-            break;
+            break
 
           email = "{}+{}@{}".format(
             email.split('@')[0].split('+')[0], i+1, email.split('@')[1]
