@@ -1,0 +1,15 @@
+---
+ldap:
+  src:
+    uri: {{ RSC_SRAM_SYNCHRONIZER_SOURCE_URI }}
+    basedn: {{ RSC_SRAM_SYNCHRONIZER_SOURCE_BASEDN }}
+    binddn: {{ RSC_SRAM_SYNCHRONIZER_SOURCE_BINDDN }}
+    passwd: {{ RSC_SRAM_SYNCHRONIZER_SOURCE_BIND_PWD }}
+  dst:
+    uri: {{ RSC_SRAM_SYNCHRONIZER_DEST_URI }}
+    basedn: {{ RSC_SRAM_SYNCHRONIZER_DEST_BASEDN }}
+    binddn: {{ RSC_SRAM_SYNCHRONIZER_DEST_BINDDN }}
+    passwd: {{ RSC_SRAM_SYNCHRONIZER_DEST_BIND_PWD }}
+pwd: changethispassword
+uid: 10000
+gid: 10000
