@@ -64,3 +64,12 @@ And for groups:
             dst_entry['cn'] = [dst_cn]
             dst_entry['description'] = [src_cn]
 ```
+
+# Docker
+## Building an image
+Create a docker image:
+
+```docker build . --tag plsc```
+
+## Running a container
+```docker run --volume $(pwd)/plsc.yml:/opt/ldap-sync/rsc-config.yml plsc```
