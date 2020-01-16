@@ -221,6 +221,46 @@ def update_or_add_dest_people_entry(src_ldap, dst_ldap, src_entry, o):
             print("Too many destination dns.")
 
 
+def update_or_add_dest_group_entry(src_dns, dst_dns, o):
+    for _, attributes in src_dns.items():
+        dst_entry, members = generate_dest_group_entry_from_src_entry(attributes)
+
+        group = attributes['cn'][0]
+
+        dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(
+            group,
+            o,
+            dst_ldap.basedn
+        )
+
+        # Process JumpCloud Persons & Groups
+        # These are only provisoned for a specific Athorisation Group
+        try:
+            if group == read_key_from_config(config, {'api': 'auth_group'}):
+                # Step 1. Provison the Persons
+                for uid in members:
+                    jumpcloud.person(**persons[uid])
+
+                # Step 2. Provision the Group
+                jumpcloud.group(group, members)
+        except Exception as e:
+            print("Skipping JumpCloud because of: {}".format(e))
+
+        if len(members) > 0:
+           dst_entry['memberUid'] = []
+
+           for uid in members:
+             dst_entry['memberUid'].append(uid)
+
+        dst_group = dst_ldap.find(dst_dn)
+
+        if len(dst_group) == 0:
+            dst_ldap.add(dst_dn, dst_entry)
+        else:
+            _, old_entry = list(dst_group.items())[0]
+            dst_ldap.modify(dst_dn, old_entry, dst_entry)
+
+
 def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
     """
     Loop over all the collaborations and sync them one by one.
@@ -241,43 +281,7 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
             ['gidNumber', 'cn', 'sczMember']
         )
 
-        for dn, attributes in src_dns.items():
-            dst_entry, members = generate_dest_group_entry_from_src_entry(attributes)
-
-            group = attributes['cn'][0]
-
-            dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(
-                group,
-                o,
-                dst_ldap.basedn
-            )
-
-            # Process JumpCloud Persons & Groups
-            # These are only provisoned for a specific Athorisation Group
-            try:
-                if group == read_key_from_config(config, {'api': 'auth_group'}):
-                    # Step 1. Provison the Persons
-                    for uid in members:
-                        jumpcloud.person(**persons[uid])
-
-                    # Step 2. Provision the Group
-                    jumpcloud.group(group, members)
-            except Exception as e:
-                print("Skipping JumpCloud because of: {}".format(e))
-
-            if len(members) > 0:
-               dst_entry['memberUid'] = []
-
-               for uid in members:
-                 dst_entry['memberUid'].append(uid)
-
-            dst_group = dst_ldap.find(dst_dn)
-
-            if len(dst_group) == 0:
-                dst_ldap.add(dst_dn, dst_entry)
-            else:
-                _, old_entry = list(dst_group.items())[0]
-                dst_ldap.modify(dst_dn, old_entry, dst_entry)
+        update_or_add_dest_group_entry(src_ldap, dst_ldap, o)
 
 
 if __name__ == "__main__":
