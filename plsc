@@ -222,6 +222,9 @@ def update_or_add_dest_people_entry(src_ldap, dst_ldap, src_entry, o):
 
 
 def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
+    """
+    Loop over all the collaborations and sync them one by one.
+    """
     for k,_ in collaborations.items():
         o = util.dn2rdns(k)['o'][0]
 
