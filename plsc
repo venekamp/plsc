@@ -221,7 +221,7 @@ def update_or_add_dest_people_entry(src_ldap, dst_ldap, src_entry, o):
             print("Too many destination dns.")
 
 
-def update_or_add_dest_group_entry(src_dns, dst_dns, o):
+def update_or_add_dest_group_entry(src_dns, dst_ldap, o):
     for _, attributes in src_dns.items():
         dst_entry, members = generate_dest_group_entry_from_src_entry(attributes)
 
@@ -281,7 +281,7 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
             ['gidNumber', 'cn', 'sczMember']
         )
 
-        update_or_add_dest_group_entry(src_ldap, dst_ldap, o)
+        update_or_add_dest_group_entry(src_dns, dst_ldap, o)
 
 
 if __name__ == "__main__":
