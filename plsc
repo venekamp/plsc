@@ -183,7 +183,7 @@ def generate_dest_group_entry_from_src_entry(attributes):
     return dst_entry, members
 
 
-def update_or_add_dest_people_entry(src_ldap, dst_ldap, src_entry, o):
+def update_or_add_dest_people_entry(dst_ldap, src_entry, o):
     """
     Update the people entry at the destionion, or in case it does
     not exists, add it instread.
