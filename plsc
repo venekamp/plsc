@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import yaml, re
 import ldap
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 import util
 from connection import Connection
@@ -55,9 +57,7 @@ def build_dst_skeleton(config, dst_ldap, collaborations):
 
     dst_o = retrieve_all_dest_organisations(dst_ldap)
 
-    print(dst_o)
     for o in sorted(src_o - dst_o):
-        # print("Syncing CO: {}".format(o))
         displayName = collaborations['o={},dc=https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
         add_ldap_structure(config, dst_ldap, o, displayName)
 
@@ -102,10 +102,38 @@ def read_config_file():
         print("usage: {} <config_file.yml>".format(sys.argv[0]))
         sys.exit(2)
 
-    with open(sys.argv[1]) as f:
-        config = yaml.safe_load(f)
+    try:
+        src_ldap_uri = os.environ['SRC_LDAP_URI']
+        src_ldap_basedn = os.environ['SRC_LDAP_BASEDN']
+        src_ldap_binddn = os.environ['SRC_LDAP_BINDDN']
+        src_ldap_passwd = os.environ['SRC_LDAP_PASSWD']
+        dst_ldap_uri = os.environ['DST_LDAP_URI']
+        dst_ldap_basedn = os.environ['DST_LDAP_BASEDN']
+        dst_ldap_binddn = os.environ['DST_LDAP_BINDDN']
+        dst_ldap_passwd = os.environ['DST_LDAP_PASSWD']
 
-    return config
+        template_loader = FileSystemLoader(searchpath='.')
+        template_env = Environment(loader=template_loader)
+        template = template_env.get_template(sys.argv[1])
+        config = template.render(
+            SRC_LDAP_URI=src_ldap_uri,
+            SRC_LDAP_BASEDN=src_ldap_basedn,
+            SRC_LDAP_BINDDN=src_ldap_binddn,
+            SRC_LDAP_PASSWD=src_ldap_passwd,
+            DST_LDAP_URI=dst_ldap_uri,
+            DST_LDAP_BASEDN=dst_ldap_basedn,
+            DST_LDAP_BINDDN=dst_ldap_binddn,
+            DST_LDAP_PASSWD=dst_ldap_passwd
+        )
+        return yaml.safe_load(config)
+    except KeyError as e:
+        print(f'Environment variable {e} not found')
+        return None
+    except TemplateNotFound as e:
+        print(f'Config file \'{sys.argv[1]}\' not found')
+
+    return None
+
 
 
 def read_key_from_config(config, key):
@@ -270,12 +298,12 @@ if __name__ == "__main__":
     """
 
     config = read_config_file()
+    if not config:
+        print('Error in config file. Aborting.')
+        sys.exit(1)
 
-    src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}), "source ldpp")
+    src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}), "source ldap")
     dst_ldap = Connection(read_key_from_config(config, {'ldap': 'dst'}), "dest ldap")
-
-    print("source ldap: {}".format(config['ldap']['src']['basedn']))
-    print("dest ldap: {}".format(config['ldap']['dst']['basedn']))
 
     jumpcloud = None
 
