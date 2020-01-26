@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import yaml, re
@@ -183,88 +183,7 @@ def generate_dest_group_entry_from_src_entry(attributes):
     return dst_entry, members
 
 
-def update_or_add_dest_people_entry(dst_ldap, src_entry, o):
-    """
-    Update the people entry at the destionion, or in case it does
-    not exists, add it instread.
-    """
-
-    #NOTE: If the people entry does exists at the destionion, but
-    #      has been removed from the source people entry, it is
-    #      not removed here.
-
-    for dn, attributes in src_entry.items():
-        uid, dst_entry = generate_dest_people_entry_from_src_entry(dn, attributes)
-
-        # Store this user in temporary cache, for later use when we need to instantiate JumpCloud User
-        # based on these same attributes
-        persons[uid] = dst_entry
-
-        # Now continue with provisioning the LDAP
-        dst_dns = dst_ldap.rfind(
-            "ou=People,o={},ou=COs".format(o),
-            "(&(objectClass=person)(uid={}))".format(uid)
-        )
-
-        if len(dst_dns) == 1:
-            dst_dn, old_entry = list(dst_dns.items())[0]
-
-            dst_ldap.modify(dst_dn, old_entry, dst_entry)
-        elif len(dst_dns) == 0:
-            dst_dn = "uid={},ou=People,o={},ou=COs,{}".format(
-                uid,
-                o,
-                dst_ldap.basedn
-            )
-            dst_ldap.add(dst_dn, dst_entry)
-        else:
-            print("Too many destination dns.")
-
-
-def update_or_add_dest_group_entry(src_dns, dst_ldap, o):
-    for _, attributes in src_dns.items():
-        dst_entry, members = generate_dest_group_entry_from_src_entry(attributes)
-
-        group = attributes['cn'][0]
-
-        dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(
-            group,
-            o,
-            dst_ldap.basedn
-        )
-
-        # Process JumpCloud Persons & Groups
-        # These are only provisoned for a specific Athorisation Group
-        try:
-            if group == read_key_from_config(config, {'api': 'auth_group'}):
-                # Step 1. Provison the Persons
-                for uid in members:
-                    jumpcloud.person(**persons[uid])
-
-                # Step 2. Provision the Group
-                jumpcloud.group(group, members)
-        except Exception as e:
-            print("Skipping JumpCloud because of: {}".format(e))
-
-        if len(members) > 0:
-           dst_entry['memberUid'] = []
-
-           for uid in members:
-             dst_entry['memberUid'].append(uid)
-
-        dst_group = dst_ldap.find(dst_dn)
-
-        if len(dst_group) == 0:
-            dst_ldap.add(dst_dn, dst_entry)
-        else:
-            _, old_entry = list(dst_group.items())[0]
-            dst_ldap.modify(dst_dn, old_entry, dst_entry)
-
-
 def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
-    """
-    Loop over all the collaborations and sync them one by one.
-    """
     for k,_ in collaborations.items():
         o = util.dn2rdns(k)['o'][0]
 
@@ -273,7 +192,32 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
             "(objectClass=person)"
         )
 
-        update_or_add_dest_people_entry(src_ldap, dst_ldap, src_entry, o)
+        for dn, attributes in src_entry.items():
+            uid, dst_entry = generate_dest_people_entry_from_src_entry(dn, attributes)
+
+            # Store this user in temporary cache, for later use when we need to instantiate JumpCloud User
+            # based on these same attributes
+            persons[uid] = dst_entry
+
+            # Now continue with provisioning the LDAP
+            dst_dns = dst_ldap.rfind(
+                "ou=People,o={},ou=COs".format(o),
+                "(&(objectClass=person)(uid={}))".format(uid)
+            )
+
+            if len(dst_dns) == 1:
+                dst_dn, old_entry = list(dst_dns.items())[0]
+
+                dst_ldap.modify(dst_dn, old_entry, dst_entry)
+            elif len(dst_dns) == 0:
+                dst_dn = "uid={},ou=People,o={},ou=COs,{}".format(
+                    uid,
+                    o,
+                    dst_ldap.basedn
+                )
+                dst_ldap.add(dst_dn, dst_entry)
+            else:
+                print("Too many destination dns.")
 
         src_dns = src_ldap.rfind(
             "ou=Groups,o={}".format(o),
@@ -281,7 +225,43 @@ def sync_rsc_with_scz(src_ldap, dst_ldap, collaborations):
             ['gidNumber', 'cn', 'sczMember']
         )
 
-        update_or_add_dest_group_entry(src_dns, dst_ldap, o)
+        for dn, attributes in src_dns.items():
+            dst_entry, members = generate_dest_group_entry_from_src_entry(attributes)
+
+            group = attributes['cn'][0]
+
+            dst_dn = "cn={},ou=Groups,o={},ou=COs,{}".format(
+                group,
+                o,
+                dst_ldap.basedn
+            )
+
+            # Process JumpCloud Persons & Groups
+            # These are only provisoned for a specific Athorisation Group
+            try:
+                if group == read_key_from_config(config, {'api': 'auth_group'}):
+                    # Step 1. Provison the Persons
+                    for uid in members:
+                        jumpcloud.person(**persons[uid])
+
+                    # Step 2. Provision the Group
+                    jumpcloud.group(group, members)
+            except Exception as e:
+                print("Skipping JumpCloud because of: {}".format(e))
+
+            if len(members) > 0:
+               dst_entry['memberUid'] = []
+
+               for uid in members:
+                 dst_entry['memberUid'].append(uid)
+
+            dst_group = dst_ldap.find(dst_dn)
+
+            if len(dst_group) == 0:
+                dst_ldap.add(dst_dn, dst_entry)
+            else:
+                _, old_entry = list(dst_group.items())[0]
+                dst_ldap.modify(dst_dn, old_entry, dst_entry)
 
 
 if __name__ == "__main__":
@@ -291,8 +271,11 @@ if __name__ == "__main__":
 
     config = read_config_file()
 
-    src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}))
-    dst_ldap = Connection(read_key_from_config(config, {'ldap': 'dst'}))
+    src_ldap = Connection(read_key_from_config(config, {'ldap': 'src'}), "source ldpp")
+    dst_ldap = Connection(read_key_from_config(config, {'ldap': 'dst'}), "dest ldap")
+
+    print("source ldap: {}".format(config['ldap']['src']['basedn']))
+    print("dest ldap: {}".format(config['ldap']['dst']['basedn']))
 
     jumpcloud = None
 

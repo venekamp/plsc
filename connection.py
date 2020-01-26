@@ -10,7 +10,9 @@ class Connection(object):
     # BaseDN, public
     basedn = None
 
-    def __init__(self, config):
+    def __init__(self, config, name):
+        print(f'This LDAP is: {name}')
+        self.name = name
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
         ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
@@ -19,11 +21,14 @@ class Connection(object):
         binddn = config['binddn']
         passwd = config['passwd']
 
+        print(f'uri: {uri}')
         self.__c = ldap.initialize(uri)
 
         if binddn == 'external':
             self.__c.sasl_external_bind_s()
         else:
+            print(f'binddn: {binddn}')
+            print(f'passwd: "{passwd}"')
             self.__c.simple_bind_s(binddn, passwd)
 
     def __encode(self, entry):
