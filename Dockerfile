@@ -19,4 +19,4 @@ COPY connection.py \
 
 RUN chmod u+x plsc
 
-CMD ["/opt/ldap-sync/plsc", "/opt/ldap-sync/rsc-config.yml"]
+CMD ["/opt/ldap-sync/plsc", "rsc-config.yml"]
