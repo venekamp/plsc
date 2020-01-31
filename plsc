@@ -58,7 +58,7 @@ def build_dst_skeleton(config, dst_ldap, collaborations):
     dst_o = retrieve_all_dest_organisations(dst_ldap)
 
     for o in sorted(src_o - dst_o):
-        displayName = collaborations['o={},dc=https://rsc-authz.in.test.surfresearchcloud.nl/saml/metadata,dc=pilot-services,dc=scz,dc=lab,dc=surf,dc=nl'.format(o)]['description']
+        displayName = collaborations['o={},{}'.format(o, src_ldap.basedn)]['description']
         add_ldap_structure(config, dst_ldap, o, displayName)
 
 
@@ -316,7 +316,6 @@ if __name__ == "__main__":
         # print(jumpcloud)
     except Exception as e:
         print("Skipping jumpcloud because of: {}".format(e))
-
 
     service = get_service_from_config(config)
     collaborations = get_collaboration_for_service(src_ldap, service)
