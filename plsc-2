@@ -234,6 +234,8 @@ def sync_cos(src_cos, dst_cos):
 
         #  NOTE: The remainder of this function is for JumpCloud only and
         #        should be removed once JumpCloud is not necessary anymore.
+        if not jumpcloud:
+            return
 
         #  Add users to jumpcloud
         members = []
