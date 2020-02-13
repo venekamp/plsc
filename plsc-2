@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+"""
+LDAP synchronisation script. It takes a configuration file, from
+which it reads necessary values for a source and destination LDAP. These
+values include: url, basedn, binddn and bind password.
+
+Optionally the configuration file clould also lists the necessary info
+for synchronization with JumpCloud. However, this is currently a temporallily
+solution and is expected to be replaced in the future.
+"""
 
 import sys
 import yaml
@@ -8,15 +17,21 @@ import ldap
 import util
 
 from connection import Connection
-from jumpcloud import JumpCloud
+from jumpcloud import JumpCloud  # Needed until jumpcloud is replaced
 
 
 class ConfigItemNotFound(Exception):
+    """A configuration item could not be found."""
     def __init__(self, config_item):
         self.config_item = config_item
 
 
 def extract_error_msg_from_ldap_exeception(e):
+    """
+    When the LDAP library raises an exeption the error message
+    contains a descrition and additional info. Return those seperately
+    instead of a single string.
+    """
     s = str(e)
     d = eval(s)
     return d['desc'], d['info']
@@ -39,8 +54,10 @@ def read_config_file():
 
 def get_value_from_config(config, *keys):
     """
-       Get the value that belongs to the keys combination
-       from the config file.
+    Get the value that belongs to the keys combination from the config file.
+    This function is called recursively until either the key path delivers a
+    value, or the key path is invalid, in which case the ConfigItemNotFound
+    exception is raised. Otherwise the found value is returned.
     """
 
     try:
@@ -69,6 +86,7 @@ def init_jumpcloud(config):
 
 
 def get_collaborations(ldap_connection):
+    """Return all collaborations from the supplied 'ldap_connection'."""
     r = ldap_connection.find(
         None,
         "(&(objectClass=organization)(o=*))",
@@ -86,6 +104,10 @@ def get_collaborations(ldap_connection):
 
 
 def get_people(ldap_connection, co):
+    """
+    Given the 'ldap_connection' and 'co', return all people
+    for that CO.
+    """
     r = ldap_connection.rfind(
         f'ou=People,o={co}',
         "(&(ObjectClass=person)(uid=*))",
@@ -103,6 +125,13 @@ def get_people(ldap_connection, co):
 
 
 def generate_group_entry(co, attributes, old_entry={}):
+    """
+    Return a new Groups entry based on the 'attributes' of
+    the source LDAP and the attributes of the destination
+    LDAP.
+
+    Handles KeyError exceptions and then return None.
+    """
     try:
         entry = old_entry
 
@@ -126,6 +155,13 @@ def generate_group_entry(co, attributes, old_entry={}):
 
 
 def generate_people_entry(co, attributes, old_entry={}):
+    """
+    Return a new People entry based on the 'attributes' of
+    the source LDAP and the attributes of the destination
+    LDAP.
+
+    Handles KeyError exceptions and then return None.
+    """
     try:
         entry = old_entry.copy()
 
@@ -176,6 +212,11 @@ def update_displayName(co, old_entry, displayName):
 
 
 def add_new_people(co, src_people, new_people):
+    """
+    Add new People entries, i.e. only add new People entries
+    to the destination LDAP if the entrie does not exists
+    there yet.
+    """
     for uid in new_people:
         entry = generate_people_entry(co, src_people[uid])
         dn = f'uid={uid},ou=People,o={co},{dst_ldap.basedn}'
@@ -190,6 +231,12 @@ def remove_people(co, removed_people):
 
 
 def sync_people(co, src_people, dst_people):
+    """
+    Synchronize the People entries in the destination LDAP
+    with the ones in the source LDAP. Synchronization only
+    works if the People entry exists in both the source and
+    destination LDAP.
+    """
     for uid, attributes in src_people.items():
         old_entry = dst_people[uid]
         dst_entry = generate_people_entry(co, attributes, old_entry)
@@ -201,7 +248,7 @@ def sync_people(co, src_people, dst_people):
 
 
 def sync_cos(src_cos, dst_cos):
-    """Synchronizes the destination ldap with the source one."""
+    """Synchronizes the destination LDAP with the source one."""
 
     for co, attributes in src_cos.items():
         if 'description' in attributes:
@@ -264,6 +311,11 @@ def sync_cos(src_cos, dst_cos):
 
 
 def create_co_structure(co, attributes):
+    """
+    Add a new CO to the destination LDAP. In case of missing
+    attributes, the KeyError exception is not caught and the
+    handling of it is left to the calling function.
+    """
     entry = {
         'objectClass': ['top', 'organization', 'extensibleObject'],
         'displayName': attributes['description']
@@ -273,7 +325,7 @@ def create_co_structure(co, attributes):
 
 
 def add_ou_entry_under_o(l, co, entry_name):
-    """ Add a new ou entry under the o of the CO. """
+    """ Add a new ou entry 'entry_name' under the o of the CO. """
     entry = {
         'ObjectClass': ['organizationalUnit', 'top']
     }
@@ -282,10 +334,15 @@ def add_ou_entry_under_o(l, co, entry_name):
 
 
 def add_entry_groups(co):
+    """Add a Group entry for the specified 'co'."""
     add_ou_entry_under_o(dst_ldap, co, "Groups")
 
 
 def add_groups(co):
+    """
+    For the specified 'co', get all defined groups from the
+    source LDAP and copy those group to the destination LDAP.
+    """
     entries = src_ldap.rfind(
         f'ou=Groups,o={co}',
         'cn=*',
@@ -304,10 +361,15 @@ def add_groups(co):
 
 
 def add_entry_people(co):
+    """Add a People entry for the specified 'co'."""
     add_ou_entry_under_o(dst_ldap, co, "People")
 
 
 def add_people(co):
+    """
+    For the specified 'co', get all defined people from the
+    source LDAP and copy those group to the destination LDAP.
+    """
     entries = src_ldap.rfind(
         f'ou=People,o={co}',
         '(uid=*)',
