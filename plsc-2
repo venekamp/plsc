@@ -310,7 +310,7 @@ def sync_cos(src_cos, dst_cos):
 
 
 
-def create_co_structure(co, attributes):
+def add_co_entry(co, attributes):
     """
     Add a new CO to the destination LDAP. In case of missing
     attributes, the KeyError exception is not caught and the
@@ -324,13 +324,13 @@ def create_co_structure(co, attributes):
     dst_ldap.add(f'o={co},{dst_ldap.basedn}', entry)
 
 
-def add_ou_entry_under_o(l, co, entry_name):
+def add_ou_entry_under_o(ldap_connection, co, entry_name):
     """ Add a new ou entry 'entry_name' under the o of the CO. """
     entry = {
         'ObjectClass': ['organizationalUnit', 'top']
     }
 
-    l.add(f'ou={entry_name},o={co},{l.basedn}', entry)
+    ldap_connection.add(f'ou={entry_name},o={co},{ldap_connection.basedn}', entry)
 
 
 def add_entry_groups(co):
@@ -396,7 +396,7 @@ def add_new_cos(cos):
     for co, attributes in cos.items():
         print(f'Creating structure for co: {co}')
         try:
-            create_co_structure(co, attributes)
+            add_co_entry(co, attributes)
 
             add_entry_groups(co)
             add_groups(co)
