@@ -166,9 +166,12 @@ def generate_people_entry(co, attributes, old_entry={}):
         entry = old_entry.copy()
 
         required_object_classes = ['inetOrgPerson', 'person', 'posixAccount']
-        for objectClass in required_object_classes:
-            if objectClass not in entry['objectClass']:
-                entry['objectClass'].append(objectClass)
+        if 'objectClass' not in entry:
+            entry['objectClass'] = required_object_classes
+        else:
+            for objectClass in required_object_classes:
+                if objectClass not in entry['objectClass']:
+                    entry['objectClass'].append(objectClass)
 
         entry['uid'] = attributes['uid']
         entry['cn'] = attributes['cn']
