@@ -37,7 +37,6 @@ class JumpCloud(object):
 
     persons = {}
     groups = {}
-    foreign_uid = {}
 
     def __init__(self, url, key, grp=None):
       self.url = url
@@ -110,9 +109,9 @@ class JumpCloud(object):
           suggestion = "{}.{}.{}".format(firstname, lastname, n).lower().replace(' ','')
 
 
-    def lookup_person(self, email):
+    def lookup_person(self, external_uid):
       for uid in self.persons.keys():
-        if equal_email(self.persons[uid]['record']['email'], email):
+        if self.persons[uid]['record']['external_dn'] == external_uid:
           return uid
 
       return None
@@ -128,7 +127,7 @@ class JumpCloud(object):
 
 
     def person(self, **kwargs):
-      src_uid = kwargs.get('uid')[0]
+      external_uid = kwargs.get('uid')[0]
       firstname = kwargs.get('givenName', [''])[0]
       lastname = kwargs.get('sn', [''])[0]
       email = kwargs.get('mail', [''])[0]
@@ -145,9 +144,7 @@ class JumpCloud(object):
         print("User: {} {} is not registered as JumpCloud user, since he is not having a valid email address".format(firstname, lastname))
         return
 
-      uid = self.lookup_person(email)
-
-      self.foreign_uid[src_uid] = uid
+      uid = self.lookup_person(external_uid)
 
       if uid:
         if not equal(firstname, self.persons[uid]['record']['firstname']) or not equal(lastname, self.persons[uid]['record']['lastname']):
@@ -167,7 +164,8 @@ class JumpCloud(object):
             'username': self.username(firstname, lastname),
             'email': email,
             'firstname': firstname,
-            'lastname': lastname
+            'lastname': lastname,
+            'external_dn': external_uid
           })
 
           if record:
@@ -235,7 +233,7 @@ class JumpCloud(object):
         self.groups[gid] = {'name': name, 'members': {}}
 
       for memberUid in members:
-        uid = self.foreign_uid[memberUid]
+        uid = self.lookup_person(memberUid)
 
         if not uid:
           print("member: {} is not registered as JumpCloud group member, since he is not a valid JumpCloud person".format(memberUid))

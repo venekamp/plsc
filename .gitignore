@@ -6,9 +6,10 @@ lib/
 share/
 venv/
 .vim/
-*.yml
 lib64
 pyvenv.cfg
 plsc.yml
 *.swp
 *.pyc
+harry/
+.env

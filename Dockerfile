@@ -1,22 +1,18 @@
-FROM ubuntu:18.04
+FROM python
 
-WORKDIR /opt/ldap-sync
+MAINTAINER harry.kodden@surfnet.nl
 
-COPY requirements.txt /opt/ldap-sync/
+RUN apt-get update
+RUN apt-get install -y build-essential
+RUN apt-get install -y --no-install-recommends \
+    python-pip \
+    python-wheel \
+    python-setuptools
 
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip libsasl2-dev python-dev libldap2-dev libssl-dev && \
-    pip3 install --upgrade pip && \
-    python3 -m pip install -r requirements.txt
+RUN apt-get install -y libsasl2-dev python-dev libldap2-dev libssl-dev
 
-COPY connection.py \
-     jumpcloud.py \
-     plsc \
-     util.py \
-     rsc-config.yml \
-     /opt/ldap-sync/
+ADD requirements.txt .
 
-RUN chmod u+x plsc
+RUN pip install -r requirements.txt
 
-CMD ["/opt/ldap-sync/plsc", "rsc-config.yml"]
+WORKDIR /app
