@@ -3,6 +3,7 @@ version: "2.0"
 # Author: harry.kodden@surfnet.nl
 #
 # Start LDAP first:
+#
 #   $ docker-compose up -d ldap
 #
 # Optionally start LDAPphpAdmin:
