@@ -1,0 +1,18 @@
+# Load refint module
+dn: cn=module,cn=config
+changetype: add
+cn: module
+objectClass: olcModuleList
+objectClass: top
+olcModuleLoad: refint.la
+olcmodulepath: /usr/lib/ldap
+
+# Backend refint overlay
+dn: olcOverlay={1}refint,olcDatabase={1}hdb,cn=config
+changetype: add
+objectClass: olcConfig
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+objectClass: top
+olcOverlay: {1}refint
+olcRefintAttribute: memberof member manager owner

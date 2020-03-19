@@ -19,6 +19,14 @@ import util
 from connection import Connection
 from jumpcloud import JumpCloud  # Needed until jumpcloud is replaced
 
+import json
+
+global jumpcloud
+
+def show(label, data):
+    print(label)
+    print(json.dumps(data, indent=4, sort_keys=True))
+
 
 class ConfigItemNotFound(Exception):
     """A configuration item could not be found."""
@@ -166,12 +174,13 @@ def generate_people_entry(co, attributes, old_entry={}):
         entry = old_entry.copy()
 
         required_object_classes = ['inetOrgPerson', 'person', 'posixAccount']
-        if 'objectClass' not in entry:
-            entry['objectClass'] = required_object_classes
-        else:
-            for objectClass in required_object_classes:
-                if objectClass not in entry['objectClass']:
-                    entry['objectClass'].append(objectClass)
+        
+        for objectClass in required_object_classes:
+            if 'objectClass' not in entry:
+                entry['objectClass'] = []
+
+            if objectClass not in entry['objectClass']:
+                entry['objectClass'].append(objectClass)
 
         entry['uid'] = attributes['uid']
         entry['cn'] = attributes['cn']
@@ -223,6 +232,7 @@ def add_new_people(co, src_people, new_people):
     for uid in new_people:
         entry = generate_people_entry(co, src_people[uid])
         dn = f'uid={uid},ou=People,o={co},{dst_ldap.basedn}'
+#       print(json.dumps(entry, indent=4, sort_keys=True))
         dst_ldap.add(dn, entry)
 
 
@@ -273,8 +283,10 @@ def sync_cos(src_cos, dst_cos):
 
         if new_people:
             add_new_people(co, src_people, new_people)
+
         if deleted_people:
             remove_people(co, deleted_people)
+
         if people_in_both:
             sync_people(
                 co,
@@ -288,15 +300,8 @@ def sync_cos(src_cos, dst_cos):
             return
 
         #  Add users to jumpcloud
-        members = []
         for uid in src_people:
             jumpcloud.person(**src_people[uid])
-
-            if 'sczMember' in attributes:
-                for i in attributes['sczMember']:
-                    rdns = util.dn2rdns(i)
-                    if 'uid' in  rdns:
-                        members.append(rdns['uid'][0])
 
         group_dns = src_ldap.rfind(
             f'ou=Groups,o={co}',
@@ -304,13 +309,17 @@ def sync_cos(src_cos, dst_cos):
             ['gidNumber', 'cn', 'sczMember']
         )
 
-        auth_group = get_value_from_config(config, 'api', 'auth_group')
-
         for dn, attributes in group_dns.items():
             group = util.dn2rdns(dn)['cn'][0]
-            if group == auth_group:
-                jumpcloud.group(group, members)
 
+            members = []
+            if 'sczMember' in attributes:
+                for i in attributes['sczMember']:
+                    rdns = util.dn2rdns(i)
+                    if 'uid' in  rdns:
+                        members.append(rdns['uid'][0])
+
+                jumpcloud.group(group, members)
 
 
 def add_co_entry(co, attributes):
@@ -430,17 +439,22 @@ def sync_ldaps():
 
     if new_cos:
         cos = dict((k, src_cos[k]) for k in new_cos)
+        show('NEW CO\'s', cos)
         add_new_cos(cos)
+
     if abondoned_cos:
+        show('PURGE CO\'s', cos)
         purge_cos(abondoned_cos)
+
     if common_cos:
         sync_cos(
             dict((k, src_cos[k]) for k in common_cos),
             dict((k, dst_cos[k]) for k in common_cos)
-    )
+        )
 
 
 if __name__ == "__main__":
+
     config, config_filename = read_config_file()
 
     try:
@@ -451,8 +465,9 @@ if __name__ == "__main__":
 
         sync_ldaps()
 
-        # if jumpcloud is not None:
-        #     jumpcloud.cleanup()
+        if jumpcloud is not None:
+            jumpcloud.cleanup()
+
     except ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file {config_filename}.')
     except ldap.SERVER_DOWN as e:
