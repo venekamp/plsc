@@ -1,0 +1,148 @@
+version: 1
+
+# This OU will contain all subtrees for the COs
+dn: ou=COs,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: COs
+
+## # An example of how a CO would be setup in this OU. Note that this should
+## # NEVER be uncommented, this is just here for documentation purposes. The
+## # user API microservice will create this structure when a new CO is
+## # initialized.
+##
+## dn: ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalUnit
+## ou: Anammox
+##
+## # This OU should contain all CO members
+##
+## dn: ou=People,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalUnit
+## ou: People
+##
+## # Example person
+##
+## dn: uid=jodo,ou=People,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectClass: top
+## objectClass: inetOrgPerson
+## objectClass: eduPerson
+## objectClass: posixAccount
+## objectClass: ldapPublicKey
+## eduPersonPrincipalName: 'randomstring@eppn.domain'
+## uid: 'jodo'
+## givenName: 'John'
+## sn: 'Doe'
+## cn: 'John Doe'
+## mail: 'john.doe@example.com'
+## uidNumber: 10000
+## gidNumber: 10000
+## loginShell: '/bin/bash'
+## homeDirectory: '/home/jodo'
+## sshPublicKey: 'ssh-rsa some_key j.doe@hislaptop'
+##
+## # This OU should contain alll CO groups
+##
+## dn: ou=Groups,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalUnit
+## ou: Groups
+##
+## # Users with read privileges on the OUs 'People' and 'Groups'. There can be
+## # multiple users. This is, so Vault can manage these credentials.
+##
+## dn: ou=readUsers,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalUnit
+## ou: readUsers
+##
+## dn: cn=user123,ou=readUsers,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalRole
+## objectclass: simpleSecurityObject
+## cn: user123
+## userPassword: .....
+##
+## # Users with write privileges on the OUs 'People' and 'Groups'. There can be
+## # multiple users. This is, so Vault can manage these credentials.
+##
+## dn: ou=writeUsers,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalUnit
+## ou: writeUsers
+##
+## dn: cn=user456,ou=writeUsers,ou=Anammox,ou=COs,{{ LDAP_BASE_DN }}
+## objectclass: top
+## objectclass: organizationalRole
+## objectclass: simpleSecurityObject
+## cn: user456
+## userPassword: .....
+
+# This OU will contain all users that can only be used to bind to the LDAP
+# server it self, for different administrative purpose
+dn: ou=systemusers,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: systemusers
+
+## I have no Vault LDAP secrets plugin available. So this is not needed yet
+# dn: cn=vault,ou=systemusers,{{ LDAP_BASE_DN }}
+# objectclass: top
+# objectclass: organizationalRole
+# objectclass: simpleSecurityObject
+# cn: vault
+# userPassword: .....
+
+# All users in this OU are for the user API microservice, which should be able
+# to create new COs. There can be multiple users. This is, so Vault can manage
+# these credentials.
+dn: ou=userApi,ou=systemusers,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: userApi
+
+## Once the Vault LDAP secrets plugin is available, Vault should manage these
+## users. Until then, let's create one manually:
+dn: cn=userapi,ou=userApi,ou=systemusers,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalRole
+objectclass: simpleSecurityObject
+cn: userapi
+userPassword: ${USERAPI_PASSWORD}
+
+# All users in this OU are for the oAuth authorization server, which should be
+# able to read user info. There can be multiple users. This is, so Vault can
+# manage these credentials.
+dn: ou=authzServer,ou=systemusers,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: authzServer
+
+## Once the Vault LDAP secrets plugin is available, Vault should manage these
+## users. Until then, let's create one manually:
+dn: cn=authzServer,ou=authzServer,ou=systemusers,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalRole
+objectclass: simpleSecurityObject
+cn: authzServer
+userPassword: ${AUTHZSERVER_PASSWORD}
+
+# This OU will contain all private identities
+dn: ou=private,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: private
+
+dn: ou=People,ou=private,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: People
+
+# I expect that several scripts want a 'Groups' ou, as this is useful in a CO
+# context. So I create one. But I don't expect that this will be used here.
+dn: ou=Groups,ou=private,{{ LDAP_BASE_DN }}
+objectclass: top
+objectclass: organizationalUnit
+ou: Groups

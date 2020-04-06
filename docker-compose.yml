@@ -21,10 +21,11 @@ services:
     environment:
       LDAP_LOG_LEVEL: 0
       LDAP_BACKEND: hdb
-      LDAP_DOMAIN: ${ENV_DST_LDAP_DOMAIN}
-      LDAP_CONFIG_PASSWORD: ${ENV_DST_LDAP_PASS}
-      LDAP_ADMIN_PASSWORD: ${ENV_DST_LDAP_PASS}
-      LDAP_BASE_DN: ${ENV_DST_LDAP_BASE}
+      LDAP_ORGANISATION: SURF
+      LDAP_DOMAIN: ${DST_LDAP_DOMAIN}
+      LDAP_CONFIG_PASSWORD: ${DST_LDAP_PASSWD}
+      LDAP_ADMIN_PASSWORD: ${DST_LDAP_PASSWD}
+      LDAP_BASE_DN: ${DST_LDAP_BASEDN}
       LDAP_TLS: "false"
       LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
       DISABLE_CHOWN: "true"
@@ -60,16 +61,16 @@ services:
     depends_on:
       - ldap
     environment:
-      - SRC_LDAP_URI=${ENV_SRC_LDAP_HOST}
-      - SRC_LDAP_BASEDN=${ENV_SRC_LDAP_BASE}
-      - SRC_LDAP_BINDDN=cn=admin,${ENV_SRC_LDAP_BASE}
-      - SRC_LDAP_PASSWD=${ENV_SRC_LDAP_PASS}
+      - SRC_LDAP_URI
+      - SRC_LDAP_BASEDN
+      - SRC_LDAP_BINDDN
+      - SRC_LDAP_PASSWD
       - DST_LDAP_URI=ldap://ldap
-      - DST_LDAP_BASEDN=${ENV_DST_LDAP_BASE}
-      - DST_LDAP_BINDDN=cn=admin,${ENV_DST_LDAP_BASE}
-      - DST_LDAP_PASSWD=${ENV_DST_LDAP_PASS}
-      - API_URL=${ENV_API_URL}
-      - API_KEY=${ENV_API_KEY}
+      - DST_LDAP_BASEDN
+      - DST_LDAP_BINDDN
+      - DST_LDAP_PASSWD
+      - API_URL
+      - API_KEY
     command:
       - /bin/sh
       - -c
