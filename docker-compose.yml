@@ -20,7 +20,7 @@ services:
     image: osixia/openldap:latest
     environment:
       LDAP_LOG_LEVEL: 0
-      LDAP_BACKEND: hdb
+      LDAP_BACKEND: ${DST_LDAP_BACKEND}
       LDAP_ORGANISATION: SURF
       LDAP_DOMAIN: ${DST_LDAP_DOMAIN}
       LDAP_CONFIG_PASSWORD: ${DST_LDAP_PASSWD}
@@ -33,7 +33,7 @@ services:
       - 389:389
     volumes:
       - "${PWD}/etc/ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom"
-    command: --loglevel debug
+    command: --copy-service --loglevel debug
 
   ldapadmin:
     image: osixia/phpldapadmin:latest

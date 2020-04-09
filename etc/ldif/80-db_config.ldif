@@ -1,16 +1,16 @@
-dn: olcDatabase={1}mdb,cn=config
+dn: olcDatabase={1}{{ LDAP_BACKEND }},cn=config
 changetype: modify
 delete: olcAccess
 -
 add: olcAccess
-olcAccess: {0}to dn.regex="^ou=(People|Groups),ou=([^,]+),ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl$" by dn.children,expand="ou=readUsers,ou=$2,ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" read by dn.children,expand="ou=writeUsers,ou=$2,ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by dn.children="ou=authzServer,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" read by * break
-olcAccess: {1}to dn.regex="^.+,ou=(People|Groups),ou=([^,]+),ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl$" by dn.children,expand="ou=readUsers,ou=$2,ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" read by dn.children,expand="ou=writeUsers,ou=$2,ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by dn.children="ou=authzServer,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" read by dn.children="ou=userApi,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" read by * break
+olcAccess: {0}to dn.regex="^ou=(People|Groups),ou=([^,]+),ou=COs,ou=COs,{{ LDAP_BASE_DN }}$" by dn.children,expand="ou=readUsers,ou=$2,ou=COs,ou=COs,{{ LDAP_BASE_DN }}" read by dn.children,expand="ou=writeUsers,ou=$2,ou=COs,ou=COs,{{ LDAP_BASE_DN }}" write by dn.children="ou=authzServer,ou=systemusers,ou=COs,{{ LDAP_BASE_DN }}" read by * break
+olcAccess: {1}to dn.regex="^.+,ou=(People|Groups),ou=([^,]+),ou=COs,ou=COs,{{ LDAP_BASE_DN }}$" by dn.children,expand="ou=readUsers,ou=$2,ou=COs,ou=COs,{{ LDAP_BASE_DN }}" read by dn.children,expand="ou=writeUsers,ou=$2,ou=COs,ou=COs,{{ LDAP_BASE_DN }}" write by dn.children="ou=authzServer,ou=systemusers,ou=COs,{{ LDAP_BASE_DN }}" read by dn.children="ou=userApi,ou=systemusers,ou=COs,{{ LDAP_BASE_DN }}" read by * break
 ## Should be uncommented once we can provision users through Vault
 # olcAccess: {2}to dn.regex="^ou=readUsers,ou=([^,]+),ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl$" by dn.exact="cn=vault,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by * break
 # olcAccess: {3}to dn.regex="^.+,ou=readUsers,ou=([^,]+),ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl$" by dn.exact="cn=vault,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by dn.children="ou=userApi,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" none by * break
-olcAccess: {4}to dn.regex="uid=([^,]+),ou=People,ou=private,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" by dn.children,expand="uid=$1,ou=People,ou=private,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" read by * break
-olcAccess: {5}to dn.subtree="ou=People,ou=private,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" by dn.children="ou=userApi,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by dn.children="ou=authzServer,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by * break
-olcAccess: {6}to dn.subtree="ou=COs,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" by dn.children="ou=userApi,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by * break
+olcAccess: {4}to dn.regex="uid=([^,]+),ou=People,ou=private,ou=COs,{{ LDAP_BASE_DN }}" by dn.children,expand="uid=$1,ou=People,ou=private,ou=COs,{{ LDAP_BASE_DN }}" read by * break
+olcAccess: {5}to dn.subtree="ou=People,ou=private,ou=COs,{{ LDAP_BASE_DN }}" by dn.children="ou=userApi,ou=systemusers,ou=COs,{{ LDAP_BASE_DN }}" write by dn.children="ou=authzServer,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by * break
+olcAccess: {6}to dn.subtree="ou=COs,ou=COs,{{ LDAP_BASE_DN }}" by dn.children="ou=userApi,ou=systemusers,ou=COs,{{ LDAP_BASE_DN }}" write by * break
 # olcAccess: {7}to dn.subtree="ou=userApi,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" by dn.exact="cn=vault,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by * break
 # olcAccess: {8}to dn.subtree="ou=authzServer,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" by dn.exact="cn=vault,ou=systemusers,ou=COs,dc=researchcloud,dc=surfsara,dc=nl" write by * break
 olcAccess: {9}to attrs=userPassword,shadowLastChange by anonymous auth by * break

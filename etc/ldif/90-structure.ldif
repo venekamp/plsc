@@ -110,7 +110,7 @@ objectclass: top
 objectclass: organizationalRole
 objectclass: simpleSecurityObject
 cn: userapi
-userPassword: ${USERAPI_PASSWORD}
+userPassword: {{ LDAP_ADMIN_PASSWORD }}
 
 # All users in this OU are for the oAuth authorization server, which should be
 # able to read user info. There can be multiple users. This is, so Vault can
