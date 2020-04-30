@@ -22,7 +22,10 @@ from jumpcloud import JumpCloud  # Needed until jumpcloud is replaced
 import json
 import click
 
-global jumpcloud
+jumpcloud = None
+src_ldap = None
+dst_ldap = None
+
 
 def show(label, data):
     print(label)
@@ -443,6 +446,10 @@ def sync_ldaps():
 @click.option('-v', '--verbose', help='Set verbosity level.', count=True)
 @click.argument('config_filename', type=click.Path(exists=True))
 def main(config_filename, verbose, dry_run):
+    global src_ldap
+    global dst_ldap
+    global jumpcloud
+
     with open(config_filename, 'r') as fd:
         config = yaml.safe_load(fd)
 
@@ -450,9 +457,9 @@ def main(config_filename, verbose, dry_run):
         src_ldap = Connection(get_value_from_config(config, 'ldap', 'src'), 'SRAM services')
         dst_ldap = Connection(get_value_from_config(config, 'ldap', 'dst'), 'RSC localhost', dry_run)
 
-    #     jumpcloud = init_jumpcloud(config)
+        jumpcloud = init_jumpcloud(config)
 
-    #     sync_ldaps()
+        sync_ldaps()
 
     #     if jumpcloud is not None:
     #         jumpcloud.cleanup()
