@@ -20,6 +20,7 @@ from connection import Connection
 from jumpcloud import JumpCloud  # Needed until jumpcloud is replaced
 
 import json
+import click
 
 global jumpcloud
 
@@ -43,21 +44,6 @@ def extract_error_msg_from_ldap_exeception(e):
     s = str(e)
     d = eval(s)
     return d['desc'], d['info']
-
-
-def read_config_file():
-    """Read a YAML config file."""
-
-    if len(sys.argv) < 2:
-        print("Missing config file.")
-        print("usage: {} <config_file.yml>".format(sys.argv[0]))
-        sys.exit(2)
-
-    filename = sys.argv[1]
-    with open(filename) as fd:
-        config = yaml.safe_load(fd)
-
-    return config, filename
 
 
 def get_value_from_config(config, *keys):
@@ -174,7 +160,7 @@ def generate_people_entry(co, attributes, old_entry={}):
         entry = old_entry.copy()
 
         required_object_classes = ['inetOrgPerson', 'person', 'posixAccount']
-        
+
         for objectClass in required_object_classes:
             if 'objectClass' not in entry:
                 entry['objectClass'] = []
@@ -232,7 +218,6 @@ def add_new_people(co, src_people, new_people):
     for uid in new_people:
         entry = generate_people_entry(co, src_people[uid])
         dn = f'uid={uid},ou=People,o={co},{dst_ldap.basedn}'
-#       print(json.dumps(entry, indent=4, sort_keys=True))
         dst_ldap.add(dn, entry)
 
 
@@ -453,23 +438,31 @@ def sync_ldaps():
         )
 
 
-if __name__ == "__main__":
-
-    config, config_filename = read_config_file()
+@click.command()
+@click.option('--dry-run', help='Do not anything in the destination LDAP.', is_flag=True)
+@click.option('-v', '--verbose', help='Set verbosity level.', count=True)
+@click.argument('config_filename', type=click.Path(exists=True))
+def main(config_filename, verbose, dry_run):
+    with open(config_filename, 'r') as fd:
+        config = yaml.safe_load(fd)
 
     try:
         src_ldap = Connection(get_value_from_config(config, 'ldap', 'src'), 'SRAM services')
-        dst_ldap = Connection(get_value_from_config(config, 'ldap', 'dst'), 'RSC localhost')
+        dst_ldap = Connection(get_value_from_config(config, 'ldap', 'dst'), 'RSC localhost', dry_run)
 
-        jumpcloud = init_jumpcloud(config)
+    #     jumpcloud = init_jumpcloud(config)
 
-        sync_ldaps()
+    #     sync_ldaps()
 
-        if jumpcloud is not None:
-            jumpcloud.cleanup()
+    #     if jumpcloud is not None:
+    #         jumpcloud.cleanup()
 
     except ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file {config_filename}.')
     except ldap.SERVER_DOWN as e:
         desc, info = extract_error_msg_from_ldap_exeception(e)
         print(f'{desc} ({info})')
+
+
+if __name__ == "__main__":
+    main()

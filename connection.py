@@ -1,7 +1,6 @@
 import ldap
 import ldap.modlist
 
-
 class Connection(object):
 
     # LDAP connection, private
@@ -10,12 +9,13 @@ class Connection(object):
     # BaseDN, public
     basedn = None
 
-    def __init__(self, config, name):
+    def __init__(self, config, name, dry_run=False):
         self.name = name
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
         ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
         self.basedn = config['basedn']
+        self.dry_run = dry_run
         uri = config['uri']
         binddn = config['binddn']
         passwd = config['passwd']
@@ -69,6 +69,12 @@ class Connection(object):
 
     def add(self, dn, entry):
         addlist = ldap.modlist.addModlist(self.__encode(entry))
+
+        if self.dry_run:
+            print('We are in dry-run mode. Nothing will be added.')
+            print('{addlist}')
+            return
+
         try:
             self.__c.add_s(dn, addlist)
         except Exception as e:
