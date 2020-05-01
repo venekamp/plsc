@@ -455,14 +455,14 @@ def main(config_filename, verbose, dry_run):
 
     try:
         src_ldap = Connection(get_value_from_config(config, 'ldap', 'src'), 'SRAM services')
-        dst_ldap = Connection(get_value_from_config(config, 'ldap', 'dst'), 'RSC localhost', dry_run)
+        dst_ldap = Connection(get_value_from_config(config, 'ldap', 'dst'), 'RSC localhost', dry_run, verbose)
 
         jumpcloud = init_jumpcloud(config)
 
         sync_ldaps()
 
-    #     if jumpcloud is not None:
-    #         jumpcloud.cleanup()
+        if jumpcloud is not None:
+            jumpcloud.cleanup()
 
     except ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file {config_filename}.')
