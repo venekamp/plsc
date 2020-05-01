@@ -106,7 +106,7 @@ class Connection(object):
         else:
             if self.verbose_level > 0:
                 print('Would have modified:')
-                print(f'{modlist}')
+                self.PrettyPrint(modlist)
 
         return modlist
 
