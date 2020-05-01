@@ -111,6 +111,10 @@ class Connection(object):
         return modlist
 
     def delete(self, dn):
+        if self.dry_run:
+            print(f'Would have deleted: {dn}')
+            return
+
         try:
             self.__c.delete_s(dn)
         except Exception as e:
@@ -127,6 +131,7 @@ class Connection(object):
             new_entry['serialNumber'] = [str(seq)]
             self.modify(dn, old_entry, new_entry)
         return seq
+
 
     def PrettyPrint(self, msg):
         for m in msg:
