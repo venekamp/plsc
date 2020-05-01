@@ -88,7 +88,8 @@ class Connection(object):
         else:
             if self.verbose_level > 0:
                 print('Would have added:')
-                print(f'{addlist}')
+                self.PrettyPrint(addlist)
+
 
         return addlist
 
@@ -126,3 +127,14 @@ class Connection(object):
             new_entry['serialNumber'] = [str(seq)]
             self.modify(dn, old_entry, new_entry)
         return seq
+
+    def PrettyPrint(self, msg):
+        for m in msg:
+            attribute_name, attribute_values = m
+            print(f'  {attribute_name}: ', end='')
+            for value in attribute_values:
+                v = value.decode('utf-8')
+                print(f'{v}', end='')
+                if value != attribute_values[-1]:
+                    print(', ', end='')
+            print()
