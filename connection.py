@@ -9,23 +9,32 @@ class Connection(object):
     # BaseDN, public
     basedn = None
 
-    def __init__(self, config, name, dry_run=False):
+    def __init__(self, config, name, dry_run=False, verbose_level=0):
         self.name = name
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
         ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
+        if dry_run:
+            print('Switching to dry_run mode. No modification will be made.')
+
         self.basedn = config['basedn']
         self.dry_run = dry_run
+        self.verbose_level = verbose_level
+
         uri = config['uri']
         binddn = config['binddn']
         passwd = config['passwd']
 
         self.__c = ldap.initialize(uri)
 
-        if binddn == 'external':
-            self.__c.sasl_external_bind_s()
-        else:
-            self.__c.simple_bind_s(binddn, passwd)
+        try:
+            if binddn == 'external':
+                self.__c.sasl_external_bind_s()
+            else:
+                self.__c.simple_bind_s(binddn, passwd)
+        except Exception as e:
+            print(f'{name}: ', end='')
+            raise e
 
     def __encode(self, entry):
         r = {}
@@ -70,26 +79,34 @@ class Connection(object):
     def add(self, dn, entry):
         addlist = ldap.modlist.addModlist(self.__encode(entry))
 
-        if self.dry_run:
-            print('We are in dry-run mode. Nothing will be added.')
-            print('{addlist}')
-            return
+        if not self.dry_run:
+            try:
+                self.__c.add_s(dn, addlist)
+            except Exception as e:
+                #pass
+                print("{}\n  {}".format(dn, e))
+        else:
+            if self.verbose_level > 0:
+                print('Would have added:')
+                print(f'{addlist}')
 
-        try:
-            self.__c.add_s(dn, addlist)
-        except Exception as e:
-            #pass
-            print("{}\n  {}".format(dn, e))
         return addlist
 
     def modify(self, dn, old_entry, new_entry):
         modlist = ldap.modlist.modifyModlist(
             self.__encode(old_entry), self.__encode(new_entry))
-        try:
-            self.__c.modify_s(dn, modlist)
-        except Exception as e:
-            #pass
-            print("{}\n  {}".format(dn, e))
+
+        if not self.dry_run:
+            try:
+                self.__c.modify_s(dn, modlist)
+            except Exception as e:
+                #pass
+                print("{}\n  {}".format(dn, e))
+        else:
+            if self.verbose_level > 0:
+                print('Would have modified:')
+                print(f'{modlist}')
+
         return modlist
 
     def delete(self, dn):
