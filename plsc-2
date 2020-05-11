@@ -426,7 +426,7 @@ def sync_ldaps():
     common_cos = set.intersection(src_cos_set, dst_cos_set)
 
     if new_cos:
-        cos = dict((k, src_cos[k]) for k in new_cos)
+        cos = dict((co, src_cos[co]) for co in new_cos)
         show('NEW CO\'s', cos)
         add_new_cos(cos)
 
