@@ -427,11 +427,11 @@ def sync_ldaps():
 
     if new_cos:
         cos = dict((co, src_cos[co]) for co in new_cos)
-        show('NEW CO\'s', cos)
+        show('NEW COs', cos)
         add_new_cos(cos)
 
     if abondoned_cos:
-        show('PURGE CO\'s', cos)
+        show('PURGE COs', cos)
         purge_cos(abondoned_cos)
 
     if common_cos:
