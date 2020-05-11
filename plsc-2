@@ -25,6 +25,7 @@ import click
 jumpcloud = None
 src_ldap = None
 dst_ldap = None
+verbose_level = 0
 
 
 def show(label, data):
@@ -449,6 +450,9 @@ def main(config_filename, verbose, dry_run):
     global src_ldap
     global dst_ldap
     global jumpcloud
+    global verbose_level
+
+    verbose_level = verbose
 
     with open(config_filename, 'r') as fd:
         config = yaml.safe_load(fd)
