@@ -87,7 +87,7 @@ class Connection(object):
                 print("{}\n  {}".format(dn, e))
         else:
             if self.verbose_level > 0:
-                print('Would have added:')
+                print('\033[38;5;208mLDAP add:')
                 self.PrettyPrint(addlist)
 
 
@@ -105,14 +105,14 @@ class Connection(object):
                 print("{}\n  {}".format(dn, e))
         else:
             if self.verbose_level > 0:
-                print('Would have modified:')
+                print('LDAP modify:')
                 self.PrettyPrint(modlist)
 
         return modlist
 
     def delete(self, dn):
         if self.dry_run:
-            print(f'Would have deleted: {dn}')
+            print(f'LDAP delete DN: {dn}')
             return
 
         try:
@@ -136,10 +136,10 @@ class Connection(object):
     def PrettyPrint(self, msg):
         for m in msg:
             attribute_name, attribute_values = m
-            print(f'  {attribute_name}: ', end='')
+            print(f'  \033[33;1m{attribute_name}: ', end='')
             for value in attribute_values:
                 v = value.decode('utf-8')
-                print(f'{v}', end='')
+                print(f'\033[0m\033[36;3m{v.rstrip()}', end='')
                 if value != attribute_values[-1]:
                     print(', ', end='')
-            print()
+            print('\033[0m')
