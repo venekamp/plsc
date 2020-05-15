@@ -467,7 +467,7 @@ def sync_ldaps(limit_to_co):
 @click.option('--dry-run', help='Do not anything in the destination LDAP.', is_flag=True)
 @click.option('-v', '--verbose', help='Set verbosity level.', count=True)
 @click.option('--limit-to-co', help='Limit the syncing to the given CO.', default=False)
-@click.version_option(version='2020-05-11')
+@click.version_option(version='2020-15-11')
 @click.argument('config_filename', type=click.Path(exists=True))
 def main(config_filename, verbose, dry_run, limit_to_co):
     global src_ldap
