@@ -9,18 +9,17 @@ for synchronization with JumpCloud. However, this is currently a temporallily
 solution and is expected to be replaced in the future.
 """
 
-import sys
-import yaml
+import json
 import re
-import ldap
+import sys
 
+import click
+import ldap
 import util
+import yaml
 
 from connection import Connection
 from jumpcloud import JumpCloud  # Needed until jumpcloud is replaced
-
-import json
-import click
 
 jumpcloud = None
 src_ldap = None
