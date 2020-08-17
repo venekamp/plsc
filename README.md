@@ -1,47 +1,37 @@
-# PLSC, a Python implemention of LSC
+# PLSC: syncing and modifying two LDAPs in python
 
-This project is a Python implementation aiming for LDAP to LDAP synchronization. We are inspired by the LSC project (https://lsc-project.org/doku.php)
+Originally inspired on LSC (LDAP Synchronization Connector), plsc synchronizes
+two LDAPs. Earlier versions of plsc required adapting the python code itself.
+Which works well, but doing this multiple times is perhaps not the most
+efficient way of doing things. Therefore a new approach is taken. Instead of
+modifying the python code, the input configuration for plsc is extended to
+contain a description of what needs to be done. As a consequence the current
+version has deviated for the earlier versions considerably
 
-## Install
+## Requirements
 
-For local development we advice to make use of docker. The installation commands are specified below.
+In order to run the plsc script, you'll need python 3.6 or above. Python 3.8
+has been used through the development. Although not strictly necessary,
+`pipenv` has been used as well. If you `docker-compose` provides with an easy
+way to setup a local LDAP if you wish to use one.
 
-## Sample Synchronisation configuration
+## Installing plsc
 
-This is an example of what we need to specify source and destination.
+Copy all the files from the repo and run `pipenv install` to install the
+dependencies of the `plsc` script.
 
-Prepare e **.env** file that contains values for the following attributes:
+## Configuration file
 
-```
-SRC_LDAP_HOST=ldaps://...
-SRC_LDAP_BASE=...
-SRC_LDAP_PASS=...
+The configuration file consists out of two blocks: `ldap` and `sync`. The
+first block is for specifying necessary info for connecting to both the source
+LDAP and the destination LDAP. The `sync` block describes the source ldap tree
+and what needs to be synced.
 
-DST_LDAP_DOMAIN=example.org
-DST_LDAP_BASE=dc=example,dc=org
-DST_LDAP_PASS=changethispassword
+### Configuration: ldap
 
-API_URL=https://console.jumpcloud.com
-API_KEY=< your JumpCloud API key >
-```
+### Configuration: sync
 
-### Local development
+## Running plsc
 
-Install both **docker** and **docker-compose**
-
-Start local LDAP by:
-
-```
-docker-compose up -d ldap
-```
-
-Optionally start LDAPphpAdmin:
-
-```
-$ docker-compose up -d ldapadmin
-```
-
-Run synchronisation script by:
-```
-$ docker-compose up app
-```
+`plsc` needs a configuration file and is started by: `pipenv run ./plsc
+config.yml`
