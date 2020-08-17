@@ -1,35 +1,26 @@
 #!/usr/bin/env python
-"""
-LDAP synchronisation script. It takes a configuration file, from
-which it reads necessary values for a source and destination LDAP. These
-values include: url, basedn, binddn and bind password.
-
-Optionally the configuration file clould also lists the necessary info
-for synchronization with JumpCloud. However, this is currently a temporallily
-solution and is expected to be replaced in the future.
-"""
-
-import json
-import re
-import sys
 
 import click
-import ldap
-import util
 import yaml
+from enum import IntEnum
+import ldap
 
-from connection import Connection
-from jumpcloud import JumpCloud  # Needed until jumpcloud is replaced
+from ldap_connection import LDAPConnection
 
-jumpcloud = None
+
 src_ldap = None
 dst_ldap = None
 verbose_level = 0
 
 
-def show(label, data):
-    print(label)
-    print(json.dumps(data, indent=4, sort_keys=True))
+class VerboseLevel(IntEnum):
+    """
+    Defining the meaning of verbose levels.
+    """
+    ERROR = 0
+    WARNING = 1
+    INFO = 2
+    DEBUG = 3
 
 
 class ConfigItemNotFound(Exception):
@@ -38,15 +29,13 @@ class ConfigItemNotFound(Exception):
         self.config_item = config_item
 
 
-def extract_error_msg_from_ldap_exeception(e):
-    """
-    When the LDAP library raises an exeption the error message
-    contains a descrition and additional info. Return those seperately
-    instead of a single string.
-    """
-    s = str(e)
-    d = eval(s)
-    return d['desc'], d['info']
+def dn2rdns(dn):
+    rdns = {}
+    r = ldap.dn.str2dn(dn)
+    for rdn in r:
+        (a, v, t) = rdn[0]
+        rdns.setdefault(a, []).append(v)
+    return rdns
 
 
 def get_value_from_config(config, *keys):
@@ -69,432 +58,80 @@ def get_value_from_config(config, *keys):
         raise ConfigItemNotFound(config_item)
 
 
-def init_jumpcloud(config, dry_run):
-    #  Enable code below for jumpcloud synchronization
-    if 'api' in config:
-        if not dry_run:
-            return JumpCloud(
-                get_value_from_config(config, 'api', 'url'),
-                get_value_from_config(config, 'api', 'key')
-            )
-        print('Disabling JumpCloud, because we are in dry run mode.')
-    else:
-        print(f'Skipping JumpCloud as it is not configured.')
-
-    return None
-
-
-def get_collaborations(ldap_connection):
-    """Return all collaborations from the supplied 'ldap_connection'."""
-    r = ldap_connection.find(
-        None,
-        "(&(objectClass=organization)(o=*))",
-        None,
-        ldap.SCOPE_ONELEVEL
-    )
-
-    cos = {}
-
-    for dn, attributes in r.items():
-        co_id = util.dn2rdns(dn)['o'][0]
-        cos[co_id] = attributes
-
-    return cos
-
-
-def get_people(ldap_connection, co):
-    """
-    Given the 'ldap_connection' and 'co', return all people
-    for that CO.
-    """
-    r = ldap_connection.rfind(
-        f'ou=People,o={co}',
-        "(&(ObjectClass=person)(uid=*))",
-        None,
-        ldap.SCOPE_ONELEVEL
-    )
-
-    uids = {}
-
-    for attributes in r.values():
-        uid = attributes['uid'][0]
-        uids[uid] = attributes
-
-    return uids
-
-
-def generate_group_entry(co, attributes, old_entry={}):
-    """
-    Return a new Groups entry based on the 'attributes' of
-    the source LDAP and the attributes of the destination
-    LDAP.
-
-    Handles KeyError exceptions and then return None.
-    """
+def get_rdn(dn, index=0):
+    l = dn.split(',')
     try:
-        entry = old_entry
-
-        entry['objectClass'] = ['posixGroup']
-        entry['gidNumber'] = attributes['gidNumber']
-        entry['cn'] = attributes['cn']
-        entry['memberUid'] = []
-
-        if 'sczMember' in attributes:
-            for attribute in attributes['sczMember']:
-                rdns = util.dn2rdns(attribute)
-                if 'uid' in rdns:
-                    uid = rdns['uid'][0]
-                    entry['memberUid'].append(uid)
-    except KeyError as e:
-        dn = f'ou=Group,o={co},{src_ldap.basedn}'
-        print(f'Missing key {e} in source ldap for dn \'{dn}\'')
-        return None
-
-    return entry
+        k, v = dn.split(',')[index].split('=')
+        return f'{k}={v}'
+    except IndexError as e:
+        print(e)
 
 
-def generate_people_entry(co, attributes, old_entry={}):
-    """
-    Return a new People entry based on the 'attributes' of
-    the source LDAP and the attributes of the destination
-    LDAP.
-
-    Handles KeyError exceptions and then return None.
-    """
-    try:
-        entry = old_entry.copy()
-
-        required_object_classes = ['inetOrgPerson', 'person', 'posixAccount']
-
-        for objectClass in required_object_classes:
-            if 'objectClass' not in entry:
-                entry['objectClass'] = []
-
-            if objectClass not in entry['objectClass']:
-                entry['objectClass'].append(objectClass)
-
-        entry['uid'] = attributes['uid']
-        entry['cn'] = attributes['cn']
-        entry['sn'] = attributes['sn']
-        entry['homeDirectory'] = attributes['homeDirectory']
-        entry['uidNumber'] = attributes['uidNumber']
-        entry['gidNumber'] = attributes['gidNumber']
-
-        if 'givenName' in attributes:
-            entry['givenName'] = attributes['givenName']
-
-        if 'sshPublicKey' in attributes:
-            entry['objectClass'].append('ldapPublicKey')
-            entry['sshPublicKey'] = attributes['sshPublicKey']
-
-        if 'eduPersonPrincipalName' in attributes:
-            entry['objectClass'].append('eduPerson')
-            entry['eduPersonPrincipalName'] = attributes['eduPersonPrincipalName']
-
-        if 'mail' in attributes:
-            entry['mail'] = attributes['mail']
-    except KeyError as e:
-        dn = f'ou=People,o={co},{src_ldap.basedn}'
-        print(f'Missing key {e} in source ldap for dn \'{dn}\'')
-        return None
-
-    return entry
-
-
-def update_displayName(co, old_entry, displayName):
-    print(f'  Updating displayName to: \'{displayName}\'.')
-
-    dn = f'o={co},{dst_ldap.basedn}'
-    new_entry = {
-        'objectClass': ['extensibleObject', 'organization', 'top'],
-        'o': [co],
-        'displayName': [displayName]
-    }
-
-    dst_ldap.modify(dn, old_entry, new_entry)
-
-
-def add_new_people(co, src_people, new_people):
-    """
-    Add new People entries, i.e. only add new People entries
-    to the destination LDAP if the entrie does not exists
-    there yet.
-    """
-    for uid in new_people:
-        entry = generate_people_entry(co, src_people[uid])
-        dn = f'uid={uid},ou=People,o={co},{dst_ldap.basedn}'
-        dst_ldap.add(dn, entry)
-
-
-def remove_people(co, removed_people):
-    for uid in removed_people:
-        dn = f'uid={uid},ou=People,o={co},{dst_ldap.basedn}'
-        print(f'Removing person: {dn}')
-        dst_ldap.delete(dn)
-
-
-def sync_people(co, src_people, dst_people):
-    """
-    Synchronize the People entries in the destination LDAP
-    with the ones in the source LDAP. Synchronization only
-    works if the People entry exists in both the source and
-    destination LDAP.
-    """
-    for uid, attributes in src_people.items():
-        old_entry = dst_people[uid]
-        dst_entry = generate_people_entry(co, attributes, old_entry)
-
-        if dst_entry != old_entry:
-            print(f'Updating: {uid}')
-            dn = f'uid={uid},ou=People,o={co},{dst_ldap.basedn}'
-            dst_ldap.modify(dn, old_entry, dst_entry)
-
-
-def sync_cos(src_cos, dst_cos):
-    """Synchronizes the destination LDAP with the source one."""
-
-    for co, attributes in src_cos.items():
-        if 'description' in attributes:
-            description = attributes['description']
-            if dst_cos[co]['displayName'] != description:
-                update_displayName(co, dst_cos[co], description[0])
-        else:
-            print(f'Missing attribute \'description\'. displayName will not be updated.')
-
-        src_people = get_people(src_ldap, co)
-        dst_people = get_people(dst_ldap, co)
-
-        src_people_set = set(src_people.keys())
-        dst_people_set = set(dst_people.keys())
-
-        new_people = set.difference(src_people_set, dst_people_set)
-        deleted_people = set.difference(dst_people_set, src_people_set)
-        people_in_both = set.intersection(src_people_set, dst_people_set)
-
-        if new_people:
-            add_new_people(co, src_people, new_people)
-
-        if deleted_people:
-            remove_people(co, deleted_people)
-
-        if people_in_both:
-            sync_people(
-                co,
-                { p: src_people[p] for p in people_in_both },
-                { p: dst_people[p] for p in people_in_both }
-            )
-
-        #  NOTE: The remainder of this function is for JumpCloud only and
-        #        should be removed once JumpCloud is not necessary anymore.
-        if not jumpcloud:
-            return
-
-        #  Add users to jumpcloud
-        for uid in src_people:
-            jumpcloud.person(**src_people[uid])
-
-        group_dns = src_ldap.rfind(
-            f'ou=Groups,o={co}',
-            'ObjectClass=posixGroup',
-            ['gidNumber', 'cn', 'sczMember']
-        )
-
-        for dn, attributes in group_dns.items():
-            group = util.dn2rdns(dn)['cn'][0]
-
-            members = []
-            if 'sczMember' in attributes:
-                for i in attributes['sczMember']:
-                    rdns = util.dn2rdns(i)
-                    if 'uid' in  rdns:
-                        members.append(rdns['uid'][0])
-
-                jumpcloud.group(group, members)
-
-
-def add_co_entry(co, attributes):
-    """
-    Add a new CO to the destination LDAP. In case of missing
-    attributes, the KeyError exception is not caught and the
-    handling of it is left to the calling function.
-    """
-    entry = {
-        'objectClass': ['top', 'organization', 'extensibleObject'],
-        'displayName': attributes['description']
-    }
-
-    dst_ldap.add(f'o={co},{dst_ldap.basedn}', entry)
-
-
-def add_ou_entry_under_o(ldap_connection, co, entry_name):
-    """ Add a new ou entry 'entry_name' under the o of the CO. """
-    entry = {
-        'ObjectClass': ['organizationalUnit', 'top']
-    }
-
-    ldap_connection.add(f'ou={entry_name},o={co},{ldap_connection.basedn}', entry)
-
-
-def add_entry_groups(co):
-    """Add a Group entry for the specified 'co'."""
-    add_ou_entry_under_o(dst_ldap, co, "Groups")
-
-
-def add_groups(co):
-    """
-    For the specified 'co', get all defined groups from the
-    source LDAP and copy those group to the destination LDAP.
-    """
-    entries = src_ldap.rfind(
-        f'ou=Groups,o={co}',
-        'cn=*',
-        None,
-        ldap.SCOPE_ONELEVEL
-    )
-
-    n = len(entries.values())
-    print(f'  adding {n} groups')
-    for attributes in entries.values():
-        cn_entry = generate_group_entry(co, attributes)
-        dst_ldap.add(
-            f'cn={cn_entry["cn"][0]},ou=Groups,o={co},{dst_ldap.basedn}',
-            cn_entry
-        )
-
-
-def add_entry_people(co):
-    """Add a People entry for the specified 'co'."""
-    add_ou_entry_under_o(dst_ldap, co, "People")
-
-
-def add_people(co):
-    """
-    For the specified 'co', get all defined people from the
-    source LDAP and copy those group to the destination LDAP.
-    """
-    entries = src_ldap.rfind(
-        f'ou=People,o={co}',
-        '(uid=*)',
-        [
-            'uid', 'cn', 'sn', 'homeDirectory', 'uidNumber', 'gidNumber',
-            'displayName', 'eduPersonPrincipalName', 'sshPublicKey'
-        ],
-        ldap.SCOPE_ONELEVEL
-    )
-
-    for attributes in entries.values():
-        uid_entry = generate_people_entry(co, attributes)
-        dst_ldap.add(
-            f'uid={uid_entry["uid"][0]},ou=People,o={co},{dst_ldap.basedn}',
-            uid_entry
-        )
-
-
-def add_new_cos(cos):
-    """
-     Add a new CO to the RSC LDAP and take the attributes from
-     the corresponding SRAM LDAP entry.
-    """
-    for co, attributes in cos.items():
-        print(f'Creating structure for co: {co}')
+def drop_attributes(config, entry):
+    for drop_attribute in config['drop_attribute']:
         try:
-            add_co_entry(co, attributes)
-
-            add_entry_groups(co)
-            add_groups(co)
-
-            add_entry_people(co)
-            add_people(co)
-        except KeyError as e:
-            print(f'Missing key {e} in entry \'{attributes}\'')
-            print(f'Cannot add CO \'{co}\'')
-
-
-def purge_cos(abondoned_cos):
-    for co in abondoned_cos:
-        print(f'Purging CO: {co}')
-        dst_ldap.delete(f'o={co},{dst_ldap.basedn}')
-
-
-def sync_ldaps(limit_to_co):
-    global verbose_level
-
-    src_cos = get_collaborations(src_ldap)
-    dst_cos = get_collaborations(dst_ldap)
-
-    #  Limit should either be a string or False. By default it is False.
-    if limit_to_co:
-        if limit_to_co in src_cos:
-            src_cos = {f'{limit_to_co}': src_cos[limit_to_co]}
-
-            if limit_to_co in dst_cos:
-                dst_cos = {f'{limit_to_co}': dst_cos[limit_to_co]}
+            if type(drop_attribute) is list:
+                tmp = drop_attribute.copy()
+                k = tmp.pop(0)
+                for l in tmp:
+                    try:
+                        entry[k].remove(l)
+                    except ValueError as e:
+                        pass
             else:
-                dst_cos = []
-        else:
-            print(f'CO \'{limit_to_co}\' is unknown at the source LDAP. Aborting...')
-            if verbose_level > 0:
-                print('Pick one of the following COs:')
-                for co in src_cos:
-                    print(f'{co}')
-            sys.exit(-1)
+                del entry[drop_attribute]
+        except KeyError as e:
+            print(f"Trying to remove non exsting key: {e} Please check configuration.")
+    return entry
 
-    src_cos_set = set(src_cos.keys())
-    dst_cos_set = set(dst_cos.keys())
 
-    new_cos = set.difference(src_cos_set, dst_cos_set)
-    abondoned_cos = set.difference(dst_cos_set, src_cos_set)
-    common_cos = set.intersection(src_cos_set, dst_cos_set)
+def copy_rdn(config, src_dn, dst_dn):
+    if type(config) is list:
+        for l in config:
+            copy_rdn(l, src_dn, dst_dn)
 
-    if new_cos:
-        cos = dict((co, src_cos[co]) for co in new_cos)
-        show('NEW COs', cos)
-        add_new_cos(cos)
+    rdn = config['rdn']
+    r = src_ldap.find(src_dn, f'({rdn})', None, ldap.SCOPE_ONELEVEL)
+    for dn, entry in r.items():
+        if 'drop_attribute' in config:
+            entry = drop_attributes(config, entry)
 
-    if abondoned_cos:
-        show('PURGE COs', cos)
-        purge_cos(abondoned_cos)
+        rdn = get_rdn(dn)
+        target_dn = f'{rdn},{dst_dn}'
+        dst_ldap.add_or_modify(target_dn, entry)
 
-    if common_cos:
-        sync_cos(
-            dict((k, src_cos[k]) for k in common_cos),
-            dict((k, dst_cos[k]) for k in common_cos)
-        )
+        if 'copy_rdn' in config:
+            copy_rdn(config['copy_rdn'], f'{rdn},{src_dn}', f'{rdn},{dst_dn}')
+
+
+def sync_ldap(sync_config):
+    try:
+        copy_rdn(sync_config['copy_rdn'], src_ldap.basedn, dst_ldap.basedn)
+    except KeyError as e:
+        print(f'Error in sync section of config file. Key not found: {e}')
 
 
 @click.command()
-@click.option('--dry-run', help='Do not anything in the destination LDAP.', is_flag=True)
-@click.option('-v', '--verbose', help='Set verbosity level.', count=True)
-@click.option('--limit-to-co', help='Limit the syncing to the given CO.', default=False)
-@click.version_option(version='2020-15-11')
+@click.option('-v', '--verbose', help=f'Set verbosity level.', count=True)
 @click.argument('config_filename', type=click.Path(exists=True))
-def main(config_filename, verbose, dry_run, limit_to_co):
-    global src_ldap
-    global dst_ldap
-    global jumpcloud
-    global verbose_level
-
-    verbose_level = verbose
+@click.version_option(version='2020-08-12')
+def main(config_filename, verbose):
+    global src_ldap, dst_ldap
 
     with open(config_filename, 'r') as fd:
         config = yaml.safe_load(fd)
 
     try:
-        src_ldap = Connection(get_value_from_config(config, 'ldap', 'src'), 'SRAM services')
-        dst_ldap = Connection(get_value_from_config(config, 'ldap', 'dst'), 'RSC localhost', dry_run, verbose)
+        src_ldap = LDAPConnection(get_value_from_config(config, 'ldap', 'src'), 'dd')
+        dst_ldap = LDAPConnection(get_value_from_config(config, 'ldap', 'dst'), 'dd')
 
-        jumpcloud = init_jumpcloud(config, dry_run)
+        entry = {}
+        entry['objectClass'] = ['organizationalUnit']
+        entry['ou'] = ['test']
 
-        sync_ldaps(limit_to_co)
-
-        if jumpcloud is not None:
-            jumpcloud.cleanup()
-
+        sync_ldap(get_value_from_config(config, 'sync'))
     except ConfigItemNotFound as e:
-        print(f'Config error: key \'{e.config_item}\' does not exist in config file {config_filename}.')
-    except ldap.SERVER_DOWN as e:
-        desc, info = extract_error_msg_from_ldap_exeception(e)
-        print(f'{desc} ({info})')
+        print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
 
 
 if __name__ == "__main__":
