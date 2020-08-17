@@ -13,3 +13,4 @@ plsc.yml
 *.pyc
 harry/
 .env
+config.yml
