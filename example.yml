@@ -1,0 +1,29 @@
+ldap:
+  src:
+    uri: ldaps://ldap1.example.org
+    basedn: dc=ldap1,dc=example,dc=org
+    binddn: cn=admin,dc=ldap1,dc=example,dc=org
+    passwd: secret1
+  dst:
+    uri: ldap://localhost
+    basedn: dc=ldap1,dc=example,dc=org
+    binddn: cn=admin,dc=ldap2,dc=example,dc=org
+    passwd: secret2
+sync:
+  copy_rdn:
+    rdn: "o=*"
+    rename_rdn: "o=surf"
+    drop_attribute:
+      - [ "objectClass", "labeledURIObject" ]
+      - "host"
+      - "labeledURI"
+    copy_rdn:
+      rdn: "ou=People"
+      copy_rdn:
+        rdn: "uid=*"
+        drop_attribute:
+          - [ "objectClass", "eduPerson", "voPerson" ]
+          - "voPersonExternalAffiliation"
+          - "eduPersonScopedAffiliation"
+          - "voPersonExternalID"
+          - "eduPersonUniqueId"
