@@ -10,8 +10,8 @@ class LDAPConnection(object):
     # BaseDN, public
     basedn = None
 
-    def __init__(self, config, name, dry_run=False, verbose_level=0):
-        self.name = name
+    def __init__(self, config, ldap_name, dry_run=False, verbose_level=0):
+        self.ldap_name = ldap_name
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
         ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
@@ -34,7 +34,7 @@ class LDAPConnection(object):
             else:
                 self.__c.simple_bind_s(binddn, passwd)
         except Exception as e:
-            print(f'{name}: ', end='')
+            print(f'{ldap_name}: ', end='')
             raise e
 
     def __encode(self, entry):
@@ -110,6 +110,16 @@ class LDAPConnection(object):
                 self.PrettyPrint(modlist)
 
         return modlist
+
+
+    def add_or_modify(self, dn, entry):
+        try:
+            r = self.__c.search_s(dn, ldap.SCOPE_BASE, '(objectClass=*)', [])
+            old_entry = self.__decode(r[0][1])
+            self.modify(dn, old_entry, entry)
+        except ldap.NO_SUCH_OBJECT:
+            self.add(dn, entry)
+
 
     def delete(self, dn):
         if self.dry_run:
