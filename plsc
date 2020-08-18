@@ -122,8 +122,8 @@ def main(config_filename, verbose):
         config = yaml.safe_load(fd)
 
     try:
-        src_ldap = LDAPConnection(get_value_from_config(config, 'ldap', 'src'), 'dd')
-        dst_ldap = LDAPConnection(get_value_from_config(config, 'ldap', 'dst'), 'dd')
+        src_ldap = LDAPConnection(get_value_from_config(config, 'ldap', 'src'), 'SRAM')
+        dst_ldap = LDAPConnection(get_value_from_config(config, 'ldap', 'dst'), 'Delena')
 
         entry = {}
         entry['objectClass'] = ['organizationalUnit']
