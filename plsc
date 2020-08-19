@@ -131,10 +131,6 @@ def main(config_filename, verbose):
                 get_value_from_config(config, 'ldap', 'src', 'name')
                 )
 
-        entry = {}
-        entry['objectClass'] = ['organizationalUnit']
-        entry['ou'] = ['test']
-
         sync_ldap(get_value_from_config(config, 'sync'))
     except ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
