@@ -1,6 +1,8 @@
 import ldap
 import ldap.modlist
 
+import common
+
 
 class LDAPConnection(object):
 
@@ -10,7 +12,12 @@ class LDAPConnection(object):
     # BaseDN, public
     basedn = None
 
-    def __init__(self, config, ldap_name, dry_run=False, verbose_level=0):
+    def __init__(self, config, *kargs):
+        ldap_config = common.get_value_from_config(config, *kargs)
+        print(ldap_config)
+
+        n = common.get_value_from_config(config, 'name')
+        print(n)
         self.ldap_name = ldap_name
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
         ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)

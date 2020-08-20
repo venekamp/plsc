@@ -2,31 +2,15 @@
 
 import click
 import yaml
-from enum import IntEnum
 import ldap
 
+import common
 from ldap_connection import LDAPConnection
 
 
 src_ldap = None
 dst_ldap = None
 verbose_level = 0
-
-
-class VerboseLevel(IntEnum):
-    """
-    Defining the meaning of verbose levels.
-    """
-    ERROR = 0
-    WARNING = 1
-    INFO = 2
-    DEBUG = 3
-
-
-class ConfigItemNotFound(Exception):
-    """A configuration item could not be found."""
-    def __init__(self, config_item):
-        self.config_item = config_item
 
 
 def dn2rdns(dn):
@@ -36,26 +20,6 @@ def dn2rdns(dn):
         (a, v, t) = rdn[0]
         rdns.setdefault(a, []).append(v)
     return rdns
-
-
-def get_value_from_config(config, *keys):
-    """
-    Get the value that belongs to the keys combination from the config file.
-    This function is called recursively until either the key path delivers a
-    value, or the key path is invalid, in which case the ConfigItemNotFound
-    exception is raised. Otherwise the found value is returned.
-    """
-
-    try:
-        if len(keys) == 1:
-            return config[keys[0]]
-        else:
-            return get_value_from_config(config[keys[0]], *keys[1:])
-    except KeyError:
-        raise ConfigItemNotFound(keys[0])
-    except ConfigItemNotFound as e:
-        config_item = f'{keys[0]}/{e.config_item}'
-        raise ConfigItemNotFound(config_item)
 
 
 def get_rdn(dn, index=0):
@@ -122,17 +86,11 @@ def main(config_filename, verbose):
         config = yaml.safe_load(fd)
 
     try:
-        src_ldap = LDAPConnection(
-                get_value_from_config(config, 'ldap', 'src'),
-                get_value_from_config(config, 'ldap', 'src', 'name')
-                )
-        dst_ldap = LDAPConnection(
-                get_value_from_config(config, 'ldap', 'dst'),
-                get_value_from_config(config, 'ldap', 'src', 'name')
-                )
+        src_ldap = LDAPConnection(config, 'ldap', 'src')
+        dst_ldap = LDAPConnection(config, 'ldap', 'dst')
 
-        sync_ldap(get_value_from_config(config, 'sync'))
-    except ConfigItemNotFound as e:
+        sync_ldap(common.get_value_from_config(config, 'sync'))
+    except common.ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
 
 
