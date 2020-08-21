@@ -86,8 +86,8 @@ def main(config_filename, verbose):
         config = yaml.safe_load(fd)
 
     try:
-        src_ldap = LDAPConnection(config, 'ldap', 'src')
-        dst_ldap = LDAPConnection(config, 'ldap', 'dst')
+        src_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'src')
+        dst_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'dst')
 
         sync_ldap(common.get_value_from_config(config, 'sync'))
     except common.ConfigItemNotFound as e:

@@ -12,26 +12,25 @@ class LDAPConnection(object):
     # BaseDN, public
     basedn = None
 
-    def __init__(self, config, *kargs):
-        ldap_config = common.get_value_from_config(config, *kargs)
-        print(ldap_config)
+    def __init__(self, config, dry_run, verbose_level, *kargs):
+        ldap_config = config
+        for i in kargs:
+            ldap_config = ldap_config[i]
 
-        n = common.get_value_from_config(config, 'name')
-        print(n)
-        self.ldap_name = ldap_name
+        self.ldap_name = common.get_value_from_config(config, *kargs, 'name')
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, 0)
         ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
         if dry_run:
             print('Switching to dry_run mode. No modification will be made.')
 
-        self.basedn = config['basedn']
+        self.basedn = common.get_value_from_config(config, *kargs, 'basedn')
         self.dry_run = dry_run
         self.verbose_level = verbose_level
 
-        uri = config['uri']
-        binddn = config['binddn']
-        passwd = config['passwd']
+        uri = common.get_value_from_config(config, *kargs, 'uri')
+        binddn = common.get_value_from_config(config, *kargs, 'binddn')
+        passwd = common.get_value_from_config(config, *kargs, 'passwd')
 
         self.__c = ldap.initialize(uri)
 
