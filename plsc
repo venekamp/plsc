@@ -45,7 +45,7 @@ def drop_attributes(config, entry):
             else:
                 del entry[drop_attribute]
         except KeyError as e:
-            print(f"Trying to remove non exsting key: {e} Please check configuration.")
+            pass
     return entry
 
 
