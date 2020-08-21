@@ -34,5 +34,5 @@ def get_value_from_config(config, *keys):
     except KeyError:
         raise ConfigItemNotFound(keys[0])
     except ConfigItemNotFound as e:
-        config_item = f'{keys[0]}/{e.config_item}'
+        config_item = f'{keys[0]} → {e.config_item}'
         raise ConfigItemNotFound(config_item)
