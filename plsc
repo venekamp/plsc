@@ -65,8 +65,8 @@ def copy_rdn(config, src_dn, dst_dn):
             entry = drop_attributes(config, entry)
 
         rdn = get_rdn(dn)
-        target_dn = f'{rdn},{dst_dn}'
-        dst_ldap.add_or_modify(target_dn, entry)
+        new_dst_dn = f'{rdn},{dst_dn}'
+        dst_ldap.add_or_modify(new_dst_dn, entry)
 
         if 'copy_rdn' in config:
             copy_rdn(config['copy_rdn'], f'{rdn},{src_dn}', f'{rdn},{dst_dn}')
