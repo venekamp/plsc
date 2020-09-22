@@ -12,6 +12,20 @@ src_ldap = None
 dst_ldap = None
 verbose_level = 0
 
+supported_config_version = "2020.09"
+
+
+class ConfigVersionMismatch(Exception):
+    def __init__(self, version):
+        self.version = version
+
+
+def CheckConfigVersion(config):
+    version = common.get_value_from_config(config, 'version')
+    if version > supported_config_version:
+        raise ConfigVersionMismatch(version)
+
+
 def get_rdn(dn, index=0):
     l = dn.split(',')
     try:
@@ -76,6 +90,7 @@ def main(config_filename, verbose):
         config = yaml.safe_load(fd)
 
     try:
+        CheckConfigVersion(config)
         src_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'src')
         dst_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'dst')
 
@@ -84,6 +99,8 @@ def main(config_filename, verbose):
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
     except LDAPinvalidCredentials as e:
         print(f'Invalid credentials were given for: \'{e.ldap_name}\'.')
+    except ConfigVersionMismatch as e:
+        print(f'Configuration version is greater then currenly supported. Config is {e.version}, supported is: {supported_config_version}')
 
 
 if __name__ == "__main__":
