@@ -4,6 +4,12 @@ import ldap.modlist
 import common
 
 
+class LDAPinvalidCredentials(Exception):
+    """Invalid credentials for given LDAP"""
+    def __init__(self, ldap_name):
+        self.ldap_name = ldap_name
+
+
 class LDAPConnection(object):
 
     # LDAP connection, private
@@ -40,8 +46,8 @@ class LDAPConnection(object):
             else:
                 self.__c.simple_bind_s(binddn, passwd)
         except Exception as e:
-            print(f'{ldap_name}: ', end='')
-            raise e
+            raise LDAPinvalidCredentials(self.ldap_name)
+
 
     def __encode(self, entry):
         r = {}

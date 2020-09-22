@@ -5,6 +5,7 @@ import yaml
 import ldap
 
 import common
+from ldap_connection import LDAPinvalidCredentials
 from ldap_connection import LDAPConnection
 
 
@@ -92,6 +93,8 @@ def main(config_filename, verbose):
         sync_ldap(common.get_value_from_config(config, 'sync'))
     except common.ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
+    except LDAPinvalidCredentials as e:
+        print(f'Invalid credentials were given for: \'{e.ldap_name}\'.')
 
 
 if __name__ == "__main__":
