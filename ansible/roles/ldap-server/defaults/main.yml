@@ -1,7 +1,27 @@
 ---
 # defaults file for ldap-server
-#
-deploy_token: !vault |
+
+deploy_user: sram
+deploy_token: "{{ vault_deploy_token }}"
+
+repository: "https://{{ deploy_user }}:{{ deploy_token }}@git.ia.surfsara.nl/spider-clones/sram-poc/plsc.git"
+
+repo_dir: "{{ ansible_env.HOME }}/plsc"
+
+ldap_name: Delena
+ldap_domain: delena.surf.nl
+ldap_uri: ldap://localhost:389
+ldap_base_dn: dc=delena,dc=surf,dc=nl
+ldap_bind_db: cn=admin,dc=delena,dc=surf,dc=nl
+ldap_passwd: "{{ vault_ldap_passwd }}"
+
+src_ldap_name: SRAM
+src_ldap_uri: ldaps://ldap.sram.surf.nl
+src_ldap_base_dn: dc=ordered,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl
+src_ldap_bind_dn: cn=admin,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl
+src_ldap_passwd: "{{ vault_src_ldap_passwd }}"
+
+vault_deploy_token: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   62326538346637633062643339396135623238323561633032356638333933613064386135346133
   6563336138386636306630653162623766363039396433340a396666386339336630343536623261
@@ -9,19 +29,7 @@ deploy_token: !vault |
   3835363162656433330a313461393931363864323831623837313565663236303533353738653731
   62363664663933613734393462306237366664363938643536626236383165343630
 
-deploy_user: sram
-
-repository: "https://{{ deploy_user }}:{{ deploy_token }}@git.ia.surfsara.nl/spider-clones/sram-poc/plsc.git"
-
-repo_dir: "{{ ansible_env.HOME }}/plsc"
-
-
-ldap_name: Delena
-ldap_domain: delena.surf.nl
-ldap_uri: ldap://localhost:389
-ldap_base_dn: dc=delena,dc=surf,dc=nl
-ldap_bind_db: cn=admin,dc=delena,dc=surf,dc=nl
-ldap_passwd: !vault |
+vault_ldap_passwd: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   38313965356163656336636163633131643634313532323136653162633139393935316135613963
   6365633336626661646636663130383637303566346130300a616132623131383839653162333834
@@ -29,11 +37,7 @@ ldap_passwd: !vault |
   6134343336313663380a313030613033613465616436623539353363623130356461666535383362
   6235
 
-src_ldap_name: SRAM
-src_ldap_uri: ldaps://ldap.sram.surf.nl
-src_ldap_base_dn: dc=ordered,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl
-src_ldap_bind_dn: cn=admin,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl
-src_ldap_passwd: !vault |
+vault_src_ldap_passwd: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   32363562643365313436303466363963386263316136626237343836626536663032343266613239
   3962393134306134333262313439373164396130653935620a333461336665633031396431636539
