@@ -1,0 +1,31 @@
+ldap:
+  src:
+    name: {{ src_ldap_name }}
+    uri: {{ src_ldap_uri }}
+    basedn: {{ src_ldap_base_dn }}
+    binddn: {{src_ldap_bind_dn}}
+    passwd: {{ src_ldap_passwd }}
+  dst:
+    name: {{ ldap_name }}
+    uri: {{ ldap_uri }}
+    basedn: {{ ldap_base_dn }}
+    binddn: {{ ldap_bind_db }}
+    passwd: {{ ldap_passwd }}
+sync:
+  copy_rdn:
+    rdn: "o=*"
+    rename_rdn: "o=delena"
+    drop_attribute:
+      - [ "objectClass", "labeledURIObject" ]
+      - "host"
+      - "labeledURI"
+    copy_rdn:
+      rdn: "ou=People"
+      copy_rdn:
+        rdn: "uid=*"
+        drop_attribute:
+          - [ "objectClass", "eduPerson", "voPerson" ]
+          - "voPersonExternalAffiliation"
+          - "eduPersonScopedAffiliation"
+          - "voPersonExternalID"
+          - "eduPersonUniqueId"
