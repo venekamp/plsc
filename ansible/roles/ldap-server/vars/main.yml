@@ -8,6 +8,7 @@ packages:
   - gcc
   - git
   - libseccomp
+  - openldap-clients
   - openldap-devel
   - python36-devel
   - redhat-rpm-config
