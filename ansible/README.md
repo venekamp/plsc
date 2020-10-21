@@ -38,11 +38,12 @@ pipenv install
 ```
 
 ### Running the Molecule tests
+We have to pass somehow the Ansible Vault password to Molecule to successfully test our role.
 ```
 cd plsc/ansible
 pipenv shell
 cd roles/ldap-server
-molecule test
+ANSIBLE_VAULT_PASSWORD_FILE=/path/to/vault-pass.txt molecule test
 ```
 
 
