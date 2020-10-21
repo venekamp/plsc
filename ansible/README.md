@@ -22,8 +22,9 @@ ansible-playbook site.yml
 
 ## Testing Ansible code with Molecule
 The Ansible roles include Molecule[^1] configuration files for automatic testing. This testing code is based on Vagrant as simulation driver. The testing environment has the following dependencies:
-* a working `vagrant`[^2] setup, based on *VirtualBox* or *libvirt* as simulation back ends.
-* `molecule` and `molecule-vagrant` PIP packages
+* a working `vagrant`[^2] setup based on *libvirt* as simulation back end.
+* `molecule`, `molecule-libvirt` and `molecule-vagrant` PIP packages
+* package `libvirt-dev` (Debian/Ubuntu) or `libvirt-devel` (CentOS)
 * optionally, `pipenv` to automatically create a Python virtual environment including the PIP packages above
 
 ### GitLab deploy token

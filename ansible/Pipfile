@@ -6,9 +6,10 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-ansible = ">=2.9"
+ansible = "*"
 molecule = "*"
 molecule-vagrant = "*"
+molecule-libvirt = "*"
 
 [requires]
 python_version = "3"
