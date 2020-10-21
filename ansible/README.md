@@ -26,6 +26,10 @@ The Ansible roles include Molecule[^1] configuration files for automatic testing
 * `molecule` and `molecule-vagrant` PIP packages
 * optionally, `pipenv` to automatically create a Python virtual environment including the PIP packages above
 
+### GitLab deploy token
+The Ansible code relies on a GitLab deploy token registered in the [plsc repository](https://git.ia.surfsara.nl/spider-clones/sram-poc/plsc/-/settings/repository) to gain access to the repo and been able to fetch the code. This deploy token is encrypted using Ansible Vault. The Vault password is shared in the SURF Footlocker server.
+
+
 ### Preparing testing virtual environment
 The repository includes the file  `ansible/Pipfile` that will create a Python virtual environment with the required PIP dependencies.
 ```
