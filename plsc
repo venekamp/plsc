@@ -57,6 +57,7 @@ def copy_rdn(config, src_dn, dst_dn):
     if type(config) is list:
         for l in config:
             copy_rdn(l, src_dn, dst_dn)
+        return
 
     rdn = config['rdn']
     r = src_ldap.find(src_dn, f'({rdn})', None, ldap.SCOPE_ONELEVEL)
@@ -68,8 +69,8 @@ def copy_rdn(config, src_dn, dst_dn):
         new_dst_dn = f'{rdn},{dst_dn}'
         dst_ldap.add_or_modify(new_dst_dn, entry)
 
-        if 'copy_rdn' in config:
-            copy_rdn(config['copy_rdn'], f'{rdn},{src_dn}', f'{rdn},{dst_dn}')
+    if 'copy_rdn' in config:
+        copy_rdn(config['copy_rdn'], f'{rdn},{src_dn}', f'{rdn},{dst_dn}')
 
 
 def sync_ldap(sync_config):
