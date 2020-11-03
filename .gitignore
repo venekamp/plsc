@@ -14,3 +14,4 @@ plsc.yml
 harry/
 .env
 config.yml
+config-*.yml
