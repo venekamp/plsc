@@ -1,0 +1,22 @@
+---
+# vars file for ldap-server
+
+docker_repo_url: https://download.docker.com/linux/centos/docker-ce.repo
+
+packages:
+  - docker-ce
+  - gcc
+  - git
+  - libseccomp
+  - openldap-clients
+  - openldap-devel
+  - python36-devel
+  - redhat-rpm-config
+
+packages_pip:
+  - docker
+  - pipenv
+
+docker_group: docker
+
+docker_compose_url: https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Linux-x86_64

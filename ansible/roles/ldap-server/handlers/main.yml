@@ -1,0 +1,6 @@
+---
+# handlers file for ldap-server
+- name: sync ldap
+  command: /usr/local/bin/pipenv run ./plsc ./config.yml
+  args:
+    chdir: "{{ repo_dir }}"

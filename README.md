@@ -35,3 +35,9 @@ and what needs to be synced.
 
 `plsc` needs a configuration file and is started by: `pipenv run ./plsc
 config.yml`
+
+
+# Ansible code
+The folder `ansible` contains roles and configuration files to automate the deployment of the LDAP server plus the synchronization scrip and the cron job that periodically performs the synchronization.
+
+The Ansible roles also include Molecule-based tests.

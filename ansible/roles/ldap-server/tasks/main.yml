@@ -1,0 +1,93 @@
+---
+# tasks file for ldap-server
+- name: Install repository
+  become: true
+  get_url:
+    url: "{{ docker_repo_url }}"
+    dest: "/etc/yum.repos.d/docker-ce.repo"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Small library patch
+  become: true
+  dnf:
+    name: libseccomp
+    state: latest
+
+- name: Install packages
+  become: true
+  dnf:
+    name: "{{ packages }}"
+    state: present
+
+- name: Add user to docker group
+  become: true
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+
+- name: Install docker compose
+  become: true
+  get_url:
+    url: "{{ docker_compose_url }}"
+    dest: /usr/local/bin/docker-compose
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Start docker
+  become: true
+  systemd:
+    name: docker
+    state: started
+
+- name: Install pipenv
+  become: true
+  pip:
+    name: "{{ packages_pip }}"
+
+- name: Get repository
+  git:
+    repo: "{{ repository }}"
+    dest: "{{ repo_dir }}"
+
+- name: docker-compose env
+  template:
+    src: env.compose.j2
+    dest: "{{ repo_dir }}/.env"
+    mode: 0600
+
+- name: plsc config.yml
+  template:
+    src: config.yml.j2
+    dest: "{{ repo_dir }}/config.yml"
+    mode: 0600
+
+# TODO this may change with Ansible 2.10
+- name: Get container info
+  docker_container_info:
+    name: plsc_ldap_1
+  become: true
+  register: container_info
+
+- name: Start containers
+  command: /usr/local/bin/docker-compose up -d --force-recreate ldap
+  args:
+    chdir: "{{ repo_dir }}"
+  become: true
+  when: not container_info.exists
+  notify: sync ldap
+
+- name: Install virtual env.
+  command: pipenv install
+  args:
+    chdir: "{{ repo_dir }}"
+    creates: "{{ repo_dir }}/Pipfile.lock"
+
+- name: LDAP sync job
+  cron:
+    name: "SRAM sync"
+    minute: "*/10"
+    job: "cd {{ repo_dir }}; /usr/local/bin/pipenv run ./plsc ./config.yml"
