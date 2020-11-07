@@ -40,10 +40,10 @@ def drop_attributes(config, entry):
         try:
             if type(drop_attribute) is list:
                 tmp = drop_attribute.copy()
-                k = tmp.pop(0)
+                attribute_name = tmp.pop(0)
                 for l in tmp:
                     try:
-                        entry[k].remove(l)
+                        entry[attribute_name].remove(l)
                     except ValueError as e:
                         pass
             if type(drop_attribute) is dict:
