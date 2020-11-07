@@ -46,6 +46,10 @@ def drop_attributes(config, entry):
                         entry[k].remove(l)
                     except ValueError as e:
                         pass
+            if type(drop_attribute) is dict:
+                for attribute_name, attributes in drop_attribute.items():
+                    for add_attribute in attributes:
+                        entry[attribute_name].remove(add_attribute)
             else:
                 del entry[drop_attribute]
         except KeyError as e:
