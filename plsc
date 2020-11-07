@@ -49,7 +49,10 @@ def drop_attributes(config, entry):
             if type(drop_attribute) is dict:
                 for attribute_name, attributes in drop_attribute.items():
                     for add_attribute in attributes:
-                        entry[attribute_name].remove(add_attribute)
+                        try:
+                            entry[attribute_name].remove(add_attribute)
+                        except ValueError as e:
+                            pass
             else:
                 del entry[drop_attribute]
         except KeyError as e:
