@@ -60,6 +60,17 @@ def drop_attributes(config, entry):
     return entry
 
 
+def remove_from_attribute(config, entry):
+    for attribute, value in config['remove_from'].items():
+        if attribute in entry:
+            new_value = []
+            for i in entry[attribute]:
+                new_value.append(i.replace(value, ''))
+        entry[attribute] = new_value
+
+    return entry
+
+
 def copy_rdn(config, src_dn, dst_dn):
     if type(config) is list:
         for l in config:
@@ -71,6 +82,9 @@ def copy_rdn(config, src_dn, dst_dn):
     for dn, entry in r.items():
         if 'drop_attribute' in config:
             entry = drop_attributes(config, entry)
+
+        if 'remove_from' in config:
+            entry = remove_from_attribute(config, entry)
 
         rdn = get_rdn(dn)
         new_dst_dn = f'{rdn},{dst_dn}'
