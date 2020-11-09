@@ -60,6 +60,22 @@ def drop_attributes(config, entry):
     return entry
 
 
+def replace_basedn(config, entry):
+    global src_ldap, dst_ldap
+
+    if type(config['replace_basedn']) is str:
+        #  The change to config['replace_basedn'] is not contained within this
+        #  function and caries over. This is okay however, since having string
+        #  or a list containing a single element are equivalent.
+        config['replace_basedn'] = [config['replace_basedn']]
+
+    for attribute in config['replace_basedn']:
+        for i in range(len(entry[attribute])):
+            entry[attribute][i] = entry[attribute][i].replace(src_ldap.basedn, dst_ldap.basedn)
+
+    return entry
+
+
 def remove_from_attribute(config, entry):
     for attribute, value in config['remove_from'].items():
         if attribute in entry:
@@ -82,6 +98,9 @@ def copy_rdn(config, src_dn, dst_dn):
     for dn, entry in r.items():
         if 'drop_attribute' in config:
             entry = drop_attributes(config, entry)
+
+        if 'replace_basedn' in config:
+            entry = replace_basedn(config, entry)
 
         if 'remove_from' in config:
             entry = remove_from_attribute(config, entry)
