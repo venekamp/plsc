@@ -1,3 +1,4 @@
+version: "2020.10"
 ldap:
   src:
     name: {{ src_ldap_name }}
@@ -13,19 +14,18 @@ ldap:
     passwd: {{ ldap_passwd }}
 sync:
   copy_rdn:
-    rdn: "o=*"
-    rename_rdn: "o=delena"
-    drop_attribute:
-      - [ "objectClass", "labeledURIObject" ]
-      - "host"
-      - "labeledURI"
-    copy_rdn:
-      rdn: "ou=People"
+    - rdn: "ou=People"
       copy_rdn:
-        rdn: "uid=*"
-        drop_attribute:
-          - [ "objectClass", "eduPerson", "voPerson" ]
-          - "voPersonExternalAffiliation"
-          - "eduPersonScopedAffiliation"
-          - "voPersonExternalID"
-          - "eduPersonUniqueId"
+        - rdn: "uid=*"
+          drop_attribute:
+            - objectClass:
+              - eduPerson
+              - voPerson
+            - voPersonExternalAffiliation
+            - eduPersonScopedAffiliation
+            - voPersonExternalID
+            - eduPersonUniqueId
+    - rdn: "ou=Groups"
+      copy_rdn:
+        - rdn: "cn=*"
+          replace_basedn: "sczMember"

@@ -17,8 +17,8 @@ ldap_passwd: "{{ vault_ldap_passwd }}"
 
 src_ldap_name: SRAM
 src_ldap_uri: ldaps://ldap.sram.surf.nl
-src_ldap_base_dn: dc=ordered,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl
-src_ldap_bind_dn: cn=admin,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl
+src_ldap_base_dn: 'dc=flat,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl'
+src_ldap_bind_dn: 'cn=admin,dc=SURF Delena,dc=services,dc=sram,dc=surf,dc=nl'
 src_ldap_passwd: "{{ vault_src_ldap_passwd }}"
 
 vault_deploy_token: !vault |
