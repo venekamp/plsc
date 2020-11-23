@@ -29,15 +29,88 @@ and what needs to be synced.
 
 ### Configuration: ldap
 
+The `ldap` section contains two entries: `src` and `dst`. Both hold the same
+key values pairs. The former describes the source LDAP, while the latter the
+destination LDAP.
+
+|key|comment|
+|-|-|
+|`name`|a string containing the name given to the LDAP|
+|`uri`|the URI of the LDAP. This includes the protocol, thus `ldaps://` or `ldap://` for example|
+|`basedn`|the basedn of the LDAP|
+|`binddn`|the DN that is allowed to read access|
+|`passwd`|the password for the binddn|
+
+#### Example
+
+```yaml
+ldap:
+  src:
+    name: "Source LDAP"
+    uri: ldaps://ldap.example.com
+    basedn: dc=a,adc=project,dc=example,dc=com
+    binddn: cn=admin,dc=a,adc=project,dc=example,dc=com
+    passwd: SecretOne
+  dst:
+    name: "Destination LDAP"
+    uri: ldaps://ldap.example.org
+    basedn: dc=z,adc=project,dc=example,dc=org
+    binddn: cn=admin,dc=z,adc=project,dc=example,dc=org
+    passwd: SecreTwot
+```
+
 ### Configuration: sync
+
+The `sync` section of the configuration specifies what needs to be synced
+from the source LDAP and possibly how. The first thing you need to do is to
+tell what to do. That is done with `copy_rdn` and it tells that you want to
+copy a relative DN. For example, if you want to copy the `ou=People` that
+sits directly under your basedn, you specify the rdn as part of `copy_rdn`
+command. Thus:
+
+```yaml
+sync:
+  copy_rdn:
+   - rdn: "ou=People"
+```
+
+This would copy the `ou=People` only! If there are entries for `ou=People`,
+they are not copied. If you want to do that you have to tell the sync script
+just that. In other words, you have to tell to copy those entries as well. Thus:
+
+```yaml
+sync:
+  copy_rdn:
+    - rdn: "ou=People"
+    copy_rdn:
+      - rdn: "uid=somebody"
+```
+
+Although one could specify each uid, this approach does not scale. Therefore
+instead of `rdn: "uid=somebody"` you should use: `rnd: "uid=*"`. This simply
+itterates over all the uids of the People entry.
+
+The final version of this becomes:
+
+```yaml
+sync:
+  copy_rdn:
+    - rdn: "ou=People"
+    copy_rdn:
+      - rdn: "uid=*"
+```
+
+And it copies the `ou=People` and all its `uid`s that are defined beneath it.
 
 ## Running plsc
 
 `plsc` needs a configuration file and is started by: `pipenv run ./plsc
 config.yml`
 
+## Ansible code
 
-# Ansible code
-The folder `ansible` contains roles and configuration files to automate the deployment of the LDAP server plus the synchronization scrip and the cron job that periodically performs the synchronization.
+The folder `ansible` contains roles and configuration files to automate the
+deployment of the LDAP server plus the synchronization scrip and the cron job
+that periodically performs the synchronization.
 
 The Ansible roles also include Molecule-based tests.
