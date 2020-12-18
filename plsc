@@ -70,9 +70,9 @@ def replace_basedn(config, entry):
         config['replace_basedn'] = [config['replace_basedn']]
 
     for attribute in config['replace_basedn']:
-        for i in range(len(entry[attribute])):
-            entry[attribute][i] = entry[attribute][i].replace(src_ldap.basedn, dst_ldap.basedn)
-
+        if attribute in entry:
+            for i in range(len(entry[attribute])):
+                entry[attribute][i] = entry[attribute][i].replace(src_ldap.basedn, dst_ldap.basedn)
     return entry
 
 
