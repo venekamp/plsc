@@ -62,16 +62,20 @@ def drop_attributes(attributes, entry):
     return entry
 
 
-def replace_basedn(config, entry):
+def replace_basedn(attributes, entry):
+    """Replace a DN with a basedn from source to destination LDAP.
+    """
+
     global src_ldap, dst_ldap
 
-    if type(config['replace_basedn']) is str:
-        #  The change to config['replace_basedn'] is not contained within this
-        #  function and caries over. This is okay however, since having string
-        #  or a list containing a single element are equivalent.
-        config['replace_basedn'] = [config['replace_basedn']]
+    if type(attributes) is str:
+        # If there is a single atrribute specified for which to change
+        # the basedn, put it in an list. This list will have a single
+        # elemant only, but it can be itterated in a loop, so that when
+        # there a multiple attributes the loop can be used.
+        attributes = [attributes]
 
-    for attribute in config['replace_basedn']:
+    for attribute in attributes:
         if attribute in entry:
             for i in range(len(entry[attribute])):
                 entry[attribute][i] = entry[attribute][i].replace(src_ldap.basedn, dst_ldap.basedn)
@@ -91,7 +95,7 @@ def copy_rdn(config, src_dn, dst_dn):
             entry = drop_attributes(config['drop_attribute'], entry)
 
         if 'replace_basedn' in config:
-            entry = replace_basedn(config, entry)
+            entry = replace_basedn(config['replace_basedn'], entry)
 
         rdn = get_rdn(dn)
         new_dst_dn = f'{rdn},{dst_dn}'
