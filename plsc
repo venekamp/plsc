@@ -35,26 +35,28 @@ def get_rdn(dn, index=0):
         print(e)
 
 
-def drop_attributes(config, entry):
-    for drop_attribute in config['drop_attribute']:
+def drop_attributes(attributes, entry):
+    """Drop all the attributes from entry.
+    """
+    for attribute in attributes:
         try:
-            if type(drop_attribute) is list:
-                tmp = drop_attribute.copy()
+            if type(attribute) is list:
+                tmp = attribute.copy()
                 attribute_name = tmp.pop(0)
                 for l in tmp:
                     try:
                         entry[attribute_name].remove(l)
                     except ValueError as e:
                         pass
-            if type(drop_attribute) is dict:
-                for attribute_name, attributes in drop_attribute.items():
+            if type(attribute) is dict:
+                for attribute_name, attributes in attribute.items():
                     for add_attribute in attributes:
                         try:
                             entry[attribute_name].remove(add_attribute)
                         except ValueError as e:
                             pass
             else:
-                del entry[drop_attribute]
+                del entry[attribute]
         except KeyError as e:
             pass
     return entry
@@ -97,7 +99,7 @@ def copy_rdn(config, src_dn, dst_dn):
     r = src_ldap.find(src_dn, f'({rdn})', None, ldap.SCOPE_ONELEVEL)
     for dn, entry in r.items():
         if 'drop_attribute' in config:
-            entry = drop_attributes(config, entry)
+            entry = drop_attributes(config['drop_attribute'], entry)
 
         if 'replace_basedn' in config:
             entry = replace_basedn(config, entry)
