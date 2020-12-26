@@ -11,7 +11,7 @@ version: 1
 #objectClass: organizationalRole
 #objectClass: simpleSecurityObject
 #cn: admin
-#userPassword:: e1NTSEF9cjI1aTdzaVhuVUp3bzQ4amMrY053cjVzOEVyQlVlaUE=
+#userPassword:: e1NTSEF9dE1xeDNqMnl0RUxNWXFIOFRBMThWdHE4ZTZPVTNlMU8=
 #description: LDAP administrator
 #
 dn: dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf,dc=nl
@@ -415,28 +415,28 @@ objectClass: groupOfMembers
 cn: @all
 description: All CO members
 displayName: All Members of the Fellowship of the Ring
-member: uid=aragorn,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf
- ,dc=nl
+member: uid=aragorn,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,d
+ c=services,dc=sram,dc=surf,dc=nl
 member: uid=arwen,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc=
  services,dc=sram,dc=surf,dc=nl
-member: uid=boromir,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf
- ,dc=nl
+member: uid=boromir,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,d
+ c=services,dc=sram,dc=surf,dc=nl
 member: uid=elrond,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc
  =services,dc=sram,dc=surf,dc=nl
-member: uid=frodo,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf,d
- c=nl
-member: uid=gandalf,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf
- ,dc=nl
-member: uid=gimli,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf,d
- c=nl
+member: uid=frodo,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc=
+ services,dc=sram,dc=surf,dc=nl
+member: uid=gandalf,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,d
+ c=services,dc=sram,dc=surf,dc=nl
+member: uid=gimli,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc=
+ services,dc=sram,dc=surf,dc=nl
 member: uid=gollum,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc
  =services,dc=sram,dc=surf,dc=nl
-member: uid=legolas,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf
- ,dc=nl
-member: uid=pippin,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf,
- dc=nl
-member: uid=samwise,ou=People,dc=flat,dc=mt-doom,dc=services,dc=sram,dc=surf
- ,dc=nl
+member: uid=legolas,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,d
+ c=services,dc=sram,dc=surf,dc=nl
+member: uid=pippin,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc
+ =services,dc=sram,dc=surf,dc=nl
+member: uid=samwise,ou=People,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,d
+ c=services,dc=sram,dc=surf,dc=nl
 uniqueIdentifier: 148f5b89-5403-4624-ab7d-f088bc445f95
 
 dn: cn=ringbearers,ou=Groups,o=Rivendell.fellowship,dc=ordered,dc=mt-doom,dc
