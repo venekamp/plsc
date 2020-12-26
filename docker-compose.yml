@@ -1,21 +1,22 @@
 version: "2.0"
 
-# Author: harry.kodden@surfnet.nl
+# Authors: harry.kodden@surf.nl
+#          gerben.venekamp@surf.nl
 #
-# Start LDAP first:
+# Starting a local LDAP:
 #
 #   $ docker-compose up -d ldap
+#
+# Starting an example SRAM like ldap on port 388:
+#
+#   $ docker-compose up -d ldap-sram
 #
 # Optionally start LDAPphpAdmin:
 #
 #   $ docker-compose up -d ldapadmin
 #
-# Periodically (cron !) start synchronisation script:
-#
-#  $ docker-compose up app
 
 services:
-
   ldap:
     image: osixia/openldap:latest
     environment:
@@ -32,7 +33,26 @@ services:
     ports:
       - 389:389
     volumes:
-      - "${PWD}/etc/ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom"
+      - "${PWD}/config/dest/ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom"
+    command: --copy-service --loglevel debug
+
+  ldap-sram:
+    image: osixia/openldap:latest
+    environment:
+      LDAP_LOG_LEVEL: 0x0000
+      LDAP_BACKEND: ${DST_LDAP_BACKEND}
+      LDAP_ORGANISATION: SURF
+      LDAP_DOMAIN: ${DST_LDAP2_DOMAIN}
+      LDAP_CONFIG_PASSWORD: ${DST_LDAP2_PASSWD}
+      LDAP_ADMIN_PASSWORD: ${DST_LDAP2_PASSWD}
+      LDAP_BASE_DN: ${DST_LDAP2_BASEDN}
+      LDAP_TLS: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
+      DISABLE_CHOWN: "true"
+    ports:
+      - 388:389
+    volumes:
+      - "${PWD}/config/src/ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom"
     command: --copy-service --loglevel debug
 
   ldapadmin:
@@ -51,47 +71,3 @@ services:
       PHPLDAPADMIN_TRUST_PROXY_SSL: "true"
     restart: always
     command: --loglevel debug
-
-  app:
-    build: .
-    volumes:
-      - "${PWD}/:/app"
-    links:
-      - ldap
-    depends_on:
-      - ldap
-    environment:
-      - SRC_LDAP_URI
-      - SRC_LDAP_BASEDN
-      - SRC_LDAP_BINDDN
-      - SRC_LDAP_PASSWD
-      - DST_LDAP_URI=ldap://ldap
-      - DST_LDAP_BASEDN
-      - DST_LDAP_BINDDN
-      - DST_LDAP_PASSWD
-      - API_URL
-      - API_KEY
-    command:
-      - /bin/sh
-      - -c
-      - |
-        cat > /tmp/config.yml <<- EOF
-        ---
-          ldap:
-            src:
-              uri: $${SRC_LDAP_URI}
-              basedn: $${SRC_LDAP_BASEDN}
-              binddn: $${SRC_LDAP_BINDDN}
-              passwd: $${SRC_LDAP_PASSWD}
-            dst:
-              uri: $${DST_LDAP_URI}
-              basedn: $${DST_LDAP_BASEDN}
-              binddn: $${DST_LDAP_BINDDN}
-              passwd: $${DST_LDAP_PASSWD}
-          api:
-            key: $${API_KEY}
-            url: $${API_URL}
-          uid: 10000
-          gid: 10000
-        EOF
-        python plsc-2 /tmp/config.yml
