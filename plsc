@@ -12,7 +12,7 @@ src_ldap = None
 dst_ldap = None
 verbose_level = 0
 
-supported_config_version = "2020.10"
+supported_config_version = "2021.01"
 
 
 class ConfigVersionMismatch(Exception):
