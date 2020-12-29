@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import click
+import json
 import yaml
 import ldap
+from storage import Storage
 
 import common
 from ldap_connection import LDAPinvalidCredentials
@@ -24,6 +26,13 @@ def CheckConfigVersion(config):
     version = common.get_value_from_config(config, 'version')
     if version > supported_config_version:
         raise ConfigVersionMismatch(version)
+
+
+def GetStorage(config):
+    if 'storage' in config:
+        return Storage(config['storage'])
+
+    return Storage()
 
 
 def get_rdn(dn, index=0):
@@ -82,6 +91,11 @@ def replace_basedn(attributes, entry):
     return entry
 
 
+def add_attributes(attributes, entry, dn):
+
+    return entry
+
+
 def copy_rdn(config, src_dn, dst_dn):
     if type(config) is list:
         for l in config:
@@ -96,6 +110,9 @@ def copy_rdn(config, src_dn, dst_dn):
 
         if 'replace_basedn' in config:
             entry = replace_basedn(config['replace_basedn'], entry)
+
+        if 'add_attributes' in config:
+            entry = add_attributes(config['add_attributes'], entry, dn)
 
         rdn = get_rdn(dn)
         new_dst_dn = f'{rdn},{dst_dn}'
@@ -127,7 +144,15 @@ def main(config_filename, verbose):
         src_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'src')
         dst_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'dst')
 
+        storage = GetStorage(config)
+
+        data = storage.getData()
+        print(json.dumps(data))
+
         sync_ldap(common.get_value_from_config(config, 'sync'))
+
+        storage.WriteData()
+
     except common.ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
     except LDAPinvalidCredentials as e:
