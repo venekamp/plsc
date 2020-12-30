@@ -1,6 +1,6 @@
 import json
 
-class Storage:
+class AttributeStorage:
     def __init__(self, config=None):
         self.isUpdated = False
         self.config = config

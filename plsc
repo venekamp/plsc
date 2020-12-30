@@ -4,7 +4,7 @@ import click
 import json
 import yaml
 import ldap
-from storage import Storage
+from attributestorage import AttributeStorage as Storage
 
 import common
 from ldap_connection import LDAPinvalidCredentials
