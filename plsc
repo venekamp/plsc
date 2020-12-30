@@ -145,14 +145,11 @@ def main(config_filename, verbose):
         dst_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'dst')
 
         storage = GetStorage(config)
-
         data = storage.getData()
-        print(json.dumps(data))
 
         sync_ldap(common.get_value_from_config(config, 'sync'))
 
         storage.WriteData()
-
     except common.ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
     except LDAPinvalidCredentials as e:
