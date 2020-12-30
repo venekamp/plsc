@@ -139,7 +139,7 @@ objectClass: ldapPublicKey
 objectClass: person
 objectClass: voPerson
 cn: 7317d0f8d366033e96bc89091e5ac74e613e9267@sram.surf.nl
-sn: son of Arathorn
+sn: Evenstar
 displayName: Aragorn
 eduPersonScopedAffiliation: member@sram.surf.nl
 eduPersonUniqueId: 7317d0f8d366033e96bc89091e5ac74e613e9267@sram.surf.nl
@@ -487,7 +487,7 @@ objectClass: ldapPublicKey
 objectClass: person
 objectClass: voPerson
 cn: 7317d0f8d366033e96bc89091e5ac74e613e9267@sram.surf.nl
-sn: son of Arathorn
+sn: Evenstar
 displayName: Aragorn
 eduPersonScopedAffiliation: member@sram.surf.nl
 eduPersonUniqueId: 7317d0f8d366033e96bc89091e5ac74e613e9267@sram.surf.nl
