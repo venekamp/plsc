@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import click
-import json
 import yaml
 import ldap
 from attributestorage import AttributeStorage as Storage
+from attributestorage import MaximumSequenceNumberExceeded
 
 import common
 from ldap_connection import LDAPinvalidCredentials
@@ -13,6 +13,7 @@ from ldap_connection import LDAPConnection
 src_ldap = None
 dst_ldap = None
 verbose_level = 0
+storage = None
 
 supported_config_version = "2021.01"
 
@@ -44,6 +45,17 @@ def get_rdn(dn, index=0):
         print(e)
 
 
+def add_to_entry(entry, dn, attribute, value):
+    if attribute not in entry:
+        entry[attribute] = [value]
+        return
+
+    if type(entry[attribute]) == list:
+        entry[attribute] = entry[attribute] + value
+    else:
+        entry[attribute] = [value]
+
+
 def drop_attributes(attributes, entry):
     """Drop all the attributes from entry.
     """
@@ -68,7 +80,6 @@ def drop_attributes(attributes, entry):
                 del entry[attribute]
         except KeyError as e:
             pass
-    return entry
 
 
 def replace_basedn(attributes, entry):
@@ -88,12 +99,30 @@ def replace_basedn(attributes, entry):
         if attribute in entry:
             for i in range(len(entry[attribute])):
                 entry[attribute][i] = entry[attribute][i].replace(src_ldap.basedn, dst_ldap.basedn)
-    return entry
 
 
-def add_attributes(attributes, entry, dn):
+def add_attributes(attributes, entry, dn, data={}):
+    global storage
 
-    return entry
+    rdn = dn.split(',')[0]
+    key, value = rdn.split('=')
+    data[key] = value
+
+    for attribute in attributes:
+        if 'attribute' in attribute:
+            name = attribute['attribute']
+            try:
+                value = storage.GetAttibuteValue(dn, name)
+                add_to_entry(entry, dn, name, value)
+            except KeyError:
+                if attribute['source'] == 'literal':
+                    storage.AddLiteral(dn, entry, name, attribute['value'])
+                if attribute['source'] == 'sequence':
+                    storage.AddSequence(dn, entry, attribute['name'])
+                if attribute['source'] == 'attribute':
+                    storage.AddFromAttribute(dn, entry, attribute)
+        if 'entry' in attribute:
+            continue
 
 
 def copy_rdn(config, src_dn, dst_dn):
@@ -106,13 +135,13 @@ def copy_rdn(config, src_dn, dst_dn):
     r = src_ldap.find(src_dn, f'({rdn})', None, ldap.SCOPE_ONELEVEL)
     for dn, entry in r.items():
         if 'drop_attribute' in config:
-            entry = drop_attributes(config['drop_attribute'], entry)
+            drop_attributes(config['drop_attribute'], entry)
 
         if 'replace_basedn' in config:
-            entry = replace_basedn(config['replace_basedn'], entry)
+            ry = replace_basedn(config['replace_basedn'], entry)
 
         if 'add_attributes' in config:
-            entry = add_attributes(config['add_attributes'], entry, dn)
+            add_attributes(config['add_attributes'], entry, dn)
 
         rdn = get_rdn(dn)
         new_dst_dn = f'{rdn},{dst_dn}'
@@ -135,6 +164,7 @@ def sync_ldap(sync_config):
 @click.version_option(version='2020-08-12')
 def main(config_filename, verbose):
     global src_ldap, dst_ldap
+    global storage
 
     with open(config_filename, 'r') as fd:
         config = yaml.safe_load(fd)
@@ -145,10 +175,7 @@ def main(config_filename, verbose):
         dst_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'dst')
 
         storage = GetStorage(config)
-        data = storage.getData()
-
         sync_ldap(common.get_value_from_config(config, 'sync'))
-
         storage.WriteData()
     except common.ConfigItemNotFound as e:
         print(f'Config error: key \'{e.config_item}\' does not exist in config file \'{config_filename}\'.')
@@ -156,6 +183,8 @@ def main(config_filename, verbose):
         print(f'Invalid credentials were given for: \'{e.ldap_name}\'.')
     except ConfigVersionMismatch as e:
         print(f'Configuration version is greater then currenly supported. Config is {e.version}, supported is: {supported_config_version}')
+    except MaximumSequenceNumberExceeded as e:
+        print(f'Sequence numbers have been depleted.')
 
 
 if __name__ == "__main__":
