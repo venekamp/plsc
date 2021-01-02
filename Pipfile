@@ -9,6 +9,7 @@ verify_ssl = true
 click = "*"
 pyyaml = "*"
 python-ldap = "*"
+jinja2 = "*"
 
 [requires]
-python_version = "3"
+python_version = "3.9"
