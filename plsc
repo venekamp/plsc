@@ -141,7 +141,7 @@ def copy_rdn(config, src_dn, dst_dn):
             drop_attributes(config['drop_attribute'], entry)
 
         if 'replace_basedn' in config:
-            ry = replace_basedn(config['replace_basedn'], entry)
+            replace_basedn(config['replace_basedn'], entry)
 
         if 'add_attributes' in config:
             add_attributes(config['add_attributes'], entry, new_dst_dn)
