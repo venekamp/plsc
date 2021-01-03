@@ -134,6 +134,9 @@ def copy_rdn(config, src_dn, dst_dn):
     rdn = config['rdn']
     r = src_ldap.find(src_dn, f'({rdn})', None, ldap.SCOPE_ONELEVEL)
     for dn, entry in r.items():
+        rdn = get_rdn(dn)
+        new_dst_dn = f'{rdn},{dst_dn}'
+
         if 'drop_attribute' in config:
             drop_attributes(config['drop_attribute'], entry)
 
@@ -141,10 +144,8 @@ def copy_rdn(config, src_dn, dst_dn):
             ry = replace_basedn(config['replace_basedn'], entry)
 
         if 'add_attributes' in config:
-            add_attributes(config['add_attributes'], entry, dn)
+            add_attributes(config['add_attributes'], entry, new_dst_dn)
 
-        rdn = get_rdn(dn)
-        new_dst_dn = f'{rdn},{dst_dn}'
         dst_ldap.add_or_modify(new_dst_dn, entry)
 
     if 'copy_rdn' in config:
