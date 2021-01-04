@@ -93,7 +93,11 @@ class AttributeStorage:
             entry[attribute] = list(combined_values)
             self.AddToStorage(dn, attribute, list(new_values - existing_values))
         except KeyError:
-            entry[attribute] = [values]
+            if type(values) is not list:
+                entry[attribute] = [values]
+            else:
+                entry[attribute] = values
+
             self.AddToStorage(dn, attribute, values)
 
 
@@ -102,22 +106,32 @@ class AttributeStorage:
         self.AddLiteral(dn, entry, name, value)
 
 
-    def AddFromAttribute(self, dn, entry, attribute):
+    def AddFromAttribute(self, dn, entry, attribute, extra_values):
+        value = self.Render(dn, attribute['value'], extra_values)
+        self.AddLiteral(dn, entry, attribute['attribute'], value)
+
+
+    def Render(self, dn, string, extra_values={}):
         rdn = dn.split(',')[0]
         key, value = rdn.split('=')
 
-        context = self.data[dn]
-        context = context | { key: value }
+        context = { key: value } | self.data[dn]
+        if self.basedn:
+            context = context | { 'basedn': self.basedn }
+        context = context | extra_values
 
         env = jinja2.Environment()
-        templ = jinja2.Template(attribute['value'])
-        value = templ.render(context)
+        templ = jinja2.Template(string)
 
-        self.AddLiteral(dn, entry, attribute['attribute'], value)
+        return templ.render(context)
 
 
     def GetAttibuteValue(self, dn, attribute):
         return self.data[dn][attribute]
+
+
+    def GetEntryAttributes(self, dn):
+        return self.data[dn]
 
 
     def GetSequenceNumber(self, name):
@@ -135,3 +149,11 @@ class AttributeStorage:
 
     def getData(self):
         return self.data
+
+
+    def AttributeExists(self, dn, attribute):
+        if dn in self.data:
+            if attribute in self.data[dn]:
+                return True
+
+        return False

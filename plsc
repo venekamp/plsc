@@ -99,7 +99,7 @@ def replace_basedn(attributes, entry):
                 entry[attribute][i] = entry[attribute][i].replace(src_ldap.basedn, dst_ldap.basedn)
 
 
-def add_attributes(attributes, entry, dn, data={}):
+def add_attributes(attributes, entry, dn, extra_values={}):
     global storage
 
     for attribute in attributes:
@@ -111,12 +111,33 @@ def add_attributes(attributes, entry, dn, data={}):
             except KeyError:
                 if attribute['source'] == 'literal':
                     storage.AddLiteral(dn, entry, name, attribute['value'])
+
                 if attribute['source'] == 'sequence':
                     storage.AddSequence(dn, entry, attribute['name'])
+
                 if attribute['source'] == 'attribute':
-                    storage.AddFromAttribute(dn, entry, attribute)
+                    storage.AddFromAttribute(dn, entry, attribute, extra_values)
+
         if 'entry' in attribute:
-            continue
+            if 'add_attributes' in attribute:
+                entry_dn = storage.Render(dn, attribute['entry'])
+                k, v = get_left_most_rdn(entry_dn)
+                additional_entry = { k: [v] }
+                k, v = get_left_most_rdn(dn)
+                xyz = { k: v }
+
+                r = add_attributes(attribute['add_attributes'],
+                               additional_entry,
+                               entry_dn,
+                               storage.GetEntryAttributes(dn) | xyz
+                              )
+                return { entry_dn: additional_entry } | r
+    return {}
+
+
+def get_left_most_rdn(dn):
+    rdn = dn.split(',')[0]
+    return rdn.split('=')
 
 
 def copy_rdn(config, src_dn, dst_dn):
@@ -128,6 +149,8 @@ def copy_rdn(config, src_dn, dst_dn):
     rdn = config['rdn']
     r = src_ldap.find(src_dn, f'({rdn})', None, ldap.SCOPE_ONELEVEL)
     for dn, entry in r.items():
+        extra_entries = {}
+
         rdn = get_rdn(dn)
         new_dst_dn = f'{rdn},{dst_dn}'
 
@@ -138,9 +161,12 @@ def copy_rdn(config, src_dn, dst_dn):
             replace_basedn(config['replace_basedn'], entry)
 
         if 'add_attributes' in config:
-            add_attributes(config['add_attributes'], entry, new_dst_dn)
+            extra_entries = add_attributes(config['add_attributes'], entry, new_dst_dn)
 
         dst_ldap.add_or_modify(new_dst_dn, entry)
+
+        for dn, entry in extra_entries.items():
+            dst_ldap.add_or_modify(dn, entry)
 
     if 'copy_rdn' in config:
         copy_rdn(config['copy_rdn'], f'{rdn},{src_dn}', f'{rdn},{dst_dn}')
