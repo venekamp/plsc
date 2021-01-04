@@ -102,10 +102,6 @@ def replace_basedn(attributes, entry):
 def add_attributes(attributes, entry, dn, data={}):
     global storage
 
-    rdn = dn.split(',')[0]
-    key, value = rdn.split('=')
-    data[key] = value
-
     for attribute in attributes:
         if 'attribute' in attribute:
             name = attribute['attribute']
