@@ -37,7 +37,6 @@ def GetStorage(config):
 
 
 def get_rdn(dn, index=0):
-    l = dn.split(',')
     try:
         k, v = dn.split(',')[index].split('=')
         return f'{k}={v}'
@@ -65,18 +64,18 @@ def drop_attributes(attributes, entry):
                 for l in tmp:
                     try:
                         entry[attribute_name].remove(l)
-                    except ValueError as e:
+                    except ValueError:
                         pass
             if type(attribute) is dict:
                 for attribute_name, attributes in attribute.items():
                     for add_attribute in attributes:
                         try:
                             entry[attribute_name].remove(add_attribute)
-                        except ValueError as e:
+                        except ValueError:
                             pass
             else:
                 del entry[attribute]
-        except KeyError as e:
+        except KeyError:
             pass
 
 

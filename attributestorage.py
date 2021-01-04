@@ -1,4 +1,3 @@
-import random
 import json
 import jinja2
 
@@ -51,7 +50,7 @@ class AttributeStorage:
             with open(config['path'], 'r') as fd:
                 data = json.load(fd)
                 self.data = self.data | data
-        except IOError as e:
+        except IOError:
             pass
 
 
@@ -120,7 +119,6 @@ class AttributeStorage:
             context = context | { 'basedn': self.basedn }
         context = context | extra_values
 
-        env = jinja2.Environment()
         templ = jinja2.Template(string)
 
         return templ.render(context)
