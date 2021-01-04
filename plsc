@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import click
-import yaml
 import ldap
+import yaml
+
 from attributestorage import AttributeStorage as Storage
 from attributestorage import MaximumSequenceNumberExceeded
-
 import common
 from ldap_connection import LDAPinvalidCredentials
 from ldap_connection import LDAPConnection
