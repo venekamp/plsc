@@ -8,10 +8,11 @@ class MaximumSequenceNumberExceeded(Exception):
 
 
 class AttributeStorage:
-    def __init__(self, config=None):
+    def __init__(self, config=None, basedn=None):
         self.isUpdated = False
         self.config = config
         self.data = {}
+        self.basedn = basedn
 
         for storage_type, storage_config in config.items():
             if storage_type == 'sequences':

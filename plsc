@@ -31,7 +31,7 @@ def CheckConfigVersion(config):
 
 def GetStorage(config):
     if 'storage' in config:
-        return Storage(config['storage'])
+        return Storage(config = config['storage'], basedn = dst_ldap.basedn)
 
     return Storage()
 
