@@ -10,6 +10,16 @@ class LDAPinvalidCredentials(Exception):
         self.ldap_name = ldap_name
 
 
+def ldap_encode(entry):
+    r = {}
+    for k, v in entry.items():
+        rv = []
+        for ev in v:
+            rv.append(ev.encode())
+        r[k] = rv
+    return r
+
+
 class LDAPConnection(object):
 
     # LDAP connection, private
@@ -49,15 +59,6 @@ class LDAPConnection(object):
             raise LDAPinvalidCredentials(self.ldap_name)
 
 
-    def __encode(self, entry):
-        r = {}
-        for k, v in entry.items():
-            rv = []
-            for ev in v:
-                rv.append(ev.encode())
-            r[k] = rv
-        return r
-
     def __decode(self, entry):
         r = {}
         for k, v in entry.items():
@@ -90,7 +91,7 @@ class LDAPConnection(object):
         return self.find(b, fltr, attrs, scope)
 
     def add(self, dn, entry):
-        addlist = ldap.modlist.addModlist(self.__encode(entry))
+        addlist = ldap.modlist.addModlist(ldap_encode(entry))
 
         if not self.dry_run:
             try:
@@ -108,7 +109,7 @@ class LDAPConnection(object):
 
     def modify(self, dn, old_entry, new_entry):
         modlist = ldap.modlist.modifyModlist(
-            self.__encode(old_entry), self.__encode(new_entry))
+            ldap_encode(old_entry), ldap_encode(new_entry))
 
         if not self.dry_run:
             try:
