@@ -7,12 +7,18 @@ class MaximumSequenceNumberExceeded(Exception):
         self.maximum = maximum
 
 
+class FileChanged(Exception):
+    def __init__(self, filename):
+        self.filename = filename
+
+
 class AttributeStorage:
-    def __init__(self, config=None, basedn=None):
+    def __init__(self, config=None, basedn=None, acceptFileChange=False):
         self.isUpdated = False
         self.config = config
         self.data = {}
         self.basedn = basedn
+        self.acceptFileChange = acceptFileChange
 
         for storage_type, storage_config in config.items():
             if storage_type == 'sequences':
@@ -52,16 +58,13 @@ class AttributeStorage:
                 data = json.load(fd)
                 self.data = self.data | data
 
-                if self.CheckIfFileHasChanged():
-                    try:
-                        del self.data['data']['checksum']
-                    except KeyError:
-                        pass
-                    self.isUpdated = True
+                if self.FileHasChanged():
+                    if not self.acceptFileChange:
+                        raise FileChanged(config['path'])
 
-                    print('File has changed')
-        except IOError:
-            pass
+                    self.isUpdated = True
+        except FileNotFoundError:
+            self.isUpdated = True
 
 
     def WriteData(self):
@@ -87,7 +90,7 @@ class AttributeStorage:
                 print(e)
 
 
-    def CheckIfFileHasChanged(self):
+    def FileHasChanged(self):
         try:
             checksum = self.data['data']['checksum']
             return (checksum != self.GetChecksum())

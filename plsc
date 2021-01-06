@@ -6,6 +6,7 @@ import yaml
 
 from attributestorage import AttributeStorage as Storage
 from attributestorage import MaximumSequenceNumberExceeded
+from attributestorage import FileChanged as FileChanged
 import common
 from ldap_connection import LDAPinvalidCredentials
 from ldap_connection import LDAPConnection
@@ -29,9 +30,11 @@ def CheckConfigVersion(config):
         raise ConfigVersionMismatch(version)
 
 
-def GetStorage(config):
+def GetStorage(config, accept_file_change):
     if 'storage' in config:
-        return Storage(config = config['storage'], basedn = dst_ldap.basedn)
+        return Storage(config = config['storage'],
+                       basedn = dst_ldap.basedn,
+                       acceptFileChange = accept_file_change)
 
     return Storage()
 
@@ -180,9 +183,10 @@ def sync_ldap(sync_config):
 
 @click.command()
 @click.option('-v', '--verbose', help=f'Set verbosity level.', count=True)
+@click.option('-c', '--accept-file-change', is_flag = True, default = False, help=f'Accept changes in the data input file.')
 @click.argument('config_filename', type=click.Path(exists=True))
 @click.version_option(version='2020-08-12')
-def main(config_filename, verbose):
+def main(config_filename, accept_file_change, verbose):
     global src_ldap, dst_ldap
     global storage
 
@@ -194,7 +198,7 @@ def main(config_filename, verbose):
         src_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'src')
         dst_ldap = LDAPConnection(config, False, common.VerboseLevel.ERROR, 'ldap', 'dst')
 
-        storage = GetStorage(config)
+        storage = GetStorage(config, accept_file_change)
         sync_ldap(common.get_value_from_config(config, 'sync'))
         storage.WriteData()
     except common.ConfigItemNotFound as e:
@@ -205,6 +209,8 @@ def main(config_filename, verbose):
         print(f'Configuration version is greater then currenly supported. Config is {e.version}, supported is: {supported_config_version}')
     except MaximumSequenceNumberExceeded as e:
         print(f'Sequence numbers have been depleted.')
+    except FileChanged as e:
+        print(f'The data file \'{e.filename}\' has changed on disk. Aborting the synchronization.\nUse --continue-on-file-change if the changes need to be accepted.')
 
 
 if __name__ == "__main__":
