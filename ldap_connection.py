@@ -10,6 +10,18 @@ class LDAPinvalidCredentials(Exception):
         self.ldap_name = ldap_name
 
 
+def PrettyPrint(msg):
+    for m in msg:
+        attribute_name, attribute_values = m
+        print(f'  \033[33;1m{attribute_name}: ', end='')
+        for value in attribute_values:
+            v = value.decode('utf-8')
+            print(f'\033[0m\033[36;3m{v.rstrip()}', end='')
+            if value != attribute_values[-1]:
+                print(', ', end='')
+        print('\033[0m')
+
+
 def ldap_encode(entry):
     r = {}
     for k, v in entry.items():
@@ -103,7 +115,7 @@ class LDAPConnection(object):
         else:
             if self.verbose_level > 0:
                 print('\033[38;5;208mLDAP add:')
-                self.PrettyPrint(addlist)
+                PrettyPrint(addlist)
 
 
         return addlist
@@ -121,7 +133,7 @@ class LDAPConnection(object):
         else:
             if self.verbose_level > 0:
                 print('LDAP modify:')
-                self.PrettyPrint(modlist)
+                PrettyPrint(modlist)
 
         return modlist
 
@@ -156,15 +168,3 @@ class LDAPConnection(object):
             new_entry['serialNumber'] = [str(seq)]
             self.modify(dn, old_entry, new_entry)
         return seq
-
-
-    def PrettyPrint(self, msg):
-        for m in msg:
-            attribute_name, attribute_values = m
-            print(f'  \033[33;1m{attribute_name}: ', end='')
-            for value in attribute_values:
-                v = value.decode('utf-8')
-                print(f'\033[0m\033[36;3m{v.rstrip()}', end='')
-                if value != attribute_values[-1]:
-                    print(', ', end='')
-            print('\033[0m')
