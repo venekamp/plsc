@@ -51,6 +51,15 @@ class AttributeStorage:
             with open(config['path'], 'r') as fd:
                 data = json.load(fd)
                 self.data = self.data | data
+
+                if self.CheckIfFileHasChanged():
+                    try:
+                        del self.data['data']['checksum']
+                    except KeyError:
+                        pass
+                    self.isUpdated = True
+
+                    print('File has changed')
         except IOError:
             pass
 
@@ -76,6 +85,16 @@ class AttributeStorage:
                     json.dump(self.data, fd, indent=2)
             except IOError as e:
                 print(e)
+
+
+    def CheckIfFileHasChanged(self):
+        try:
+            checksum = self.data['data']['checksum']
+            return (checksum != self.GetChecksum())
+        except KeyError:
+            pass
+
+        return False
 
 
     def GetChecksum(self):
