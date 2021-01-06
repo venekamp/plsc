@@ -157,14 +157,3 @@ class LDAPConnection(object):
         except Exception as e:
             #pass
             print("{}\n  {}".format(dn, e))
-
-    def get_sequence(self, dn):
-        seq = 1000
-        r = self.__c.search_s(dn, ldap.SCOPE_BASE)
-        for dn, old_entry in r:
-            old_entry = ldap_decode(old_entry)
-            new_entry = old_entry.copy()
-            seq = int(new_entry['serialNumber'][0]) + 1
-            new_entry['serialNumber'] = [str(seq)]
-            self.modify(dn, old_entry, new_entry)
-        return seq
