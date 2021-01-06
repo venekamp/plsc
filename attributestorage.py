@@ -1,3 +1,4 @@
+import hashlib
 import json
 import jinja2
 
@@ -68,11 +69,25 @@ class AttributeStorage:
 
     def WriteToFile(self, config):
         if self.config and self.isUpdated:
+            self.data['data']['checksum'] = self.GetChecksum()
+
             try:
                 with open(config['path'], 'w') as fd:
                     json.dump(self.data, fd, indent=2)
             except IOError as e:
                 print(e)
+
+
+    def GetChecksum(self):
+        try:
+            del self.data['data']['checksum']
+        except KeyError:
+            pass
+
+        buf = json.dumps(self.data)
+        checksum = hashlib.sha256(bytearray(buf, 'UTF-8')).hexdigest()
+
+        return checksum
 
 
     def AddToStorage(self, dn, attribute, values):
