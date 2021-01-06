@@ -65,7 +65,7 @@ class LDAPConnection(object):
                 self.__c.sasl_external_bind_s()
             else:
                 self.__c.simple_bind_s(binddn, passwd)
-        except Exception as e:
+        except Exception:
             raise LDAPinvalidCredentials(self.ldap_name)
 
 
