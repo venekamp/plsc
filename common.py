@@ -1,5 +1,4 @@
 from enum import IntEnum
-import ldap
 
 
 class VerboseLevel(IntEnum):
