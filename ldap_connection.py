@@ -20,6 +20,16 @@ def ldap_encode(entry):
     return r
 
 
+def ldap_decode(entry):
+    r = {}
+    for k, v in entry.items():
+        rv = []
+        for ev in v:
+            rv.append(ev.decode())
+        r[k] = rv
+    return r
+
+
 class LDAPConnection(object):
 
     # LDAP connection, private
@@ -59,15 +69,6 @@ class LDAPConnection(object):
             raise LDAPinvalidCredentials(self.ldap_name)
 
 
-    def __decode(self, entry):
-        r = {}
-        for k, v in entry.items():
-            rv = []
-            for ev in v:
-                rv.append(ev.decode())
-            r[k] = rv
-        return r
-
     def __search(self, basedn, fltr='(ObjectClass=*)', attrs=[], scope=ldap.SCOPE_SUBTREE):
         if not basedn:
             basedn = self.basedn
@@ -78,7 +79,7 @@ class LDAPConnection(object):
         try:
             r = self.__search(basedn, fltr, attrs, scope)
             for dn, entry in r:
-                dns[dn] = self.__decode(entry)
+                dns[dn] = ldap_decode(entry)
         except Exception as e:
             print("find: {}".format(e))
         return dns
@@ -128,7 +129,7 @@ class LDAPConnection(object):
     def add_or_modify(self, dn, entry):
         try:
             r = self.__c.search_s(dn, ldap.SCOPE_BASE, '(objectClass=*)', [])
-            old_entry = self.__decode(r[0][1])
+            old_entry = ldap_decode(r[0][1])
             self.modify(dn, old_entry, entry)
         except ldap.NO_SUCH_OBJECT:
             self.add(dn, entry)
@@ -149,7 +150,7 @@ class LDAPConnection(object):
         seq = 1000
         r = self.__c.search_s(dn, ldap.SCOPE_BASE)
         for dn, old_entry in r:
-            old_entry = self.__decode(old_entry)
+            old_entry = ldap_decode(old_entry)
             new_entry = old_entry.copy()
             seq = int(new_entry['serialNumber'][0]) + 1
             new_entry['serialNumber'] = [str(seq)]
