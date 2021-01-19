@@ -102,6 +102,131 @@ sync:
 
 And it copies the `ou=People` and all its `uid`s that are defined beneath it.
 
+### Automatic creation of entities and attributes
+
+The SRAM LDAP contains information about identities of users and the groups
+they belong to. However, this is not sufficient when it comes to logging in
+user at the SP. First of al the user entry should be extented with for example
+the `posixAccount` object class. This is necessary so that the underlying Linux
+system is able to determine the uid of the user, its login name, etc.
+
+The `posixAccount` information is deliberately missing from SRAM. The same hold
+true for necessary group info, such as gid. In addtion if you would like to
+configure you local LDAP to have unique groups for each user, you'll find SRAM
+is not supplying that information either. Again, this has all to do with the
+design descission SRAM made.
+
+If you require a working LDAP on the Linux level, i.e. you need LDAP to provide
+uids, gids and such, the `plsc` script can help you there as well. It is able to
+create attributes and new entries while it synchronizes. What is important here
+is that `plsc` must be able to remember past generated values. There is no guarantee
+that the script will generate the same values on each run. In order to give this
+guarentee, generated values must be stored. For this the following
+configuration section should be used:
+
+```yaml
+storage:
+  file:
+    path: generated-values.json
+```
+
+It simply tells that storage must be used and that the name of the file is
+`generated-values.json`. In case of uids and gids, or rather integer sequence,
+you can specify a minumum and maximum values. This means that `plsc` starts a
+the minumun value and progresses towards the maximum each time a new value is
+requested. You also specify this in the `storage` section like so:
+
+```yaml
+storage:
+  sequences:
+    - name: uidNumber
+      minimum: 2000
+      maximum: 3000
+    - name: gidNumber
+      minimum: 3000
+      maximum: 4000
+  database:
+    username: plsc
+    password: test1234
+    table: delena
+  file:
+    path: generated-values.json
+```
+
+In order to use the sequences, and the automatic writing of generated values
+to file, you can use the below configuration. What this configuration does is:
+
+- copy the `ou=Groups`
+- copy the `uid=People`
+- for each entry in `ou=People`
+  - drop unwanted attributes from SRAM
+  - add missing object class `posixAccount`
+  - create missing uid and gid from a sequence as defined in the `storage` section
+  - specify the home directory of the user based on the generated uid
+  - specify the login shell
+  - create a new entry within `ou=Groups` for the unique group of the user
+  - create a unique gid for the new group
+  - add the user's `dn` to the newly create group, so that the user becomes a
+    member of that group
+  - add a description to the group
+
+```yaml
+sync:
+  copy_rdn:
+    - rdn: "ou=Groups"
+      copy_rdn:
+        - rdn: "cn=*"
+          replace_basedn: "member"
+          add_attributes:
+            - attribute: gidNumber
+              source: sequence
+              name: gidNumber
+    - rdn: "ou=People"
+      copy_rdn:
+        - rdn: "uid=*"
+          drop_attribute:
+            - objectClass:
+              - eduPerson
+              - voPerson
+            - voPersonExternalAffiliation
+            - eduPersonScopedAffiliation
+            - voPersonExternalID
+            - eduPersonUniqueId
+          add_attributes:
+            - attribute: objectClass
+              source: literal
+              value:
+                - posixAccount
+            - attribute: uidNumber
+              source: sequence
+              name: uidNumber
+            - attribute: gidNumber
+              source: attribute
+              value: "{{ uidNumber }}"
+            - attribute: homeDirectory
+              source: attribute
+              value: "/home/{{ uid }}"
+            - attribute: loginShell
+              source: literal
+              value: "/bin/bash"
+            - entry: "cn={{ uid }},ou=Groups,{{ basedn }}"
+              add_attributes:
+                - attribute: objectClass
+                  source: literal
+                  value:
+                    - extensibleObject
+                    - groupOfMembers
+                - attribute: gidNumber
+                  source: attribute
+                  value: "{{ uidNumber }}"
+                - attribute: member
+                  source: attribute
+                  value: "uid={{ uid }},ou=People,{{ basedn }}"
+                - attribute: description
+                  source: attribute
+                  value: "This '{{ uid }}' group was created automatically."
+```
+
 ## Running plsc
 
 `plsc` needs a configuration file and is started by: `pipenv run ./plsc
