@@ -1,5 +1,6 @@
 import hashlib
 import json
+
 import jinja2
 
 class MaximumSequenceNumberExceeded(Exception):
@@ -38,7 +39,7 @@ class AttributeStorage:
             s = { 'current': current, 'maximum': maximum }
             data_inner[sequence['name']] = s
 
-        self.data = self.data | data
+        self.data = {**self.data, **data}
 
 
     def ReadFromDB(self, config):
@@ -56,13 +57,14 @@ class AttributeStorage:
         try:
             with open(config['path'], 'r') as fd:
                 data = json.load(fd)
-                self.data = self.data | data
 
-                if self.FileHasChanged():
-                    if not self.acceptFileChange:
-                        raise FileChanged(config['path'])
+            self.data = {**self.data, **data}
 
-                    self.isUpdated = True
+            if self.FileHasChanged():
+                if not self.acceptFileChange:
+                    raise FileChanged(config['path'])
+
+                self.isUpdated = True
         except FileNotFoundError:
             self.isUpdated = True
 
@@ -151,10 +153,13 @@ class AttributeStorage:
         rdn = dn.split(',')[0]
         key, value = rdn.split('=')
 
-        context = { key: value } | self.data[dn]
+        context = {}
+        context[key] = value
+        context.update(self.data[dn])
+
         if self.basedn:
-            context = context | { 'basedn': self.basedn }
-        context = context | extra_values
+            context['basedn'] = self.basedn
+        context = { **context, **extra_values}
 
         templ = jinja2.Template(string)
 

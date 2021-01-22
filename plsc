@@ -131,9 +131,12 @@ def add_attributes(attributes, entry, dn, extra_values={}):
                 r = add_attributes(attribute['add_attributes'],
                                additional_entry,
                                entry_dn,
-                               storage.GetEntryAttributes(dn) | xyz
+                               {**storage.GetEntryAttributes(dn), **xyz}
                               )
-                return { entry_dn: additional_entry } | r
+                extra_entries = {}
+                extra_entries[entry_dn] = additional_entry
+                extra_entries.update(r)
+                return extra_entries
     return {}
 
 
