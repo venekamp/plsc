@@ -25,7 +25,8 @@
   become: true
   user:
     name: "{{ ansible_user }}"
-    groups: docker
+    groups:
+      - docker
     append: true
 
 - name: Install docker compose
