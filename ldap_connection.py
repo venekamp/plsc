@@ -22,24 +22,6 @@ def PrettyPrint(msg):
         print('\033[0m')
 
 
-def ldap_encode(entry):
-    r = {}
-    for k, v in entry.items():
-        rv = []
-        for ev in v:
-            rv.append(ev.encode())
-        r[k] = rv
-    return r
-
-
-def ldap_decode(entry):
-    r = {}
-    for k, v in entry.items():
-        rv = []
-        for ev in v:
-            rv.append(ev.decode())
-        r[k] = rv
-    return r
 
 
 class LDAPConnection(object):
@@ -81,6 +63,27 @@ class LDAPConnection(object):
             raise LDAPinvalidCredentials(self.ldap_name)
 
 
+    @staticmethod
+    def ldap_encode(entry):
+        r = {}
+        for k, v in entry.items():
+            rv = []
+            for ev in v:
+                rv.append(ev.encode())
+            r[k] = rv
+        return r
+
+
+    @staticmethod
+    def ldap_decode(entry):
+        r = {}
+        for k, v in entry.items():
+            rv = []
+            for ev in v:
+                rv.append(ev.decode())
+            r[k] = rv
+        return r
+
     def __search(self, basedn, fltr='(ObjectClass=*)', attrs=[], scope=ldap.SCOPE_SUBTREE):
         if not basedn:
             basedn = self.basedn
@@ -91,7 +94,7 @@ class LDAPConnection(object):
         try:
             r = self.__search(basedn, fltr, attrs, scope)
             for dn, entry in r:
-                dns[dn] = ldap_decode(entry)
+                dns[dn] = self.ldap_decode(entry)
         except Exception as e:
             print("find: {}".format(e))
         return dns
@@ -104,7 +107,7 @@ class LDAPConnection(object):
         return self.find(b, fltr, attrs, scope)
 
     def add(self, dn, entry):
-        addlist = ldap.modlist.addModlist(ldap_encode(entry))
+        addlist = ldap.modlist.addModlist(self.ldap_encode(entry))
 
         if not self.dry_run:
             try:
@@ -122,7 +125,7 @@ class LDAPConnection(object):
 
     def modify(self, dn, old_entry, new_entry):
         modlist = ldap.modlist.modifyModlist(
-            ldap_encode(old_entry), ldap_encode(new_entry))
+            self.ldap_encode(old_entry), self.ldap_encode(new_entry))
 
         if not self.dry_run:
             try:
@@ -141,7 +144,7 @@ class LDAPConnection(object):
     def add_or_modify(self, dn, entry):
         try:
             r = self.__c.search_s(dn, ldap.SCOPE_BASE, '(objectClass=*)', [])
-            old_entry = ldap_decode(r[0][1])
+            old_entry = self.ldap_decode(r[0][1])
             self.modify(dn, old_entry, entry)
         except ldap.NO_SUCH_OBJECT:
             self.add(dn, entry)
