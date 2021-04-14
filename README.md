@@ -48,14 +48,14 @@ ldap:
   src:
     name: "Source LDAP"
     uri: ldaps://ldap.example.com
-    basedn: dc=a,adc=project,dc=example,dc=com
-    binddn: cn=admin,dc=a,adc=project,dc=example,dc=com
+    basedn: dc=a,dc=project,dc=example,dc=com
+    binddn: cn=admin,dc=a,dc=project,dc=example,dc=com
     passwd: SecretOne
   dst:
     name: "Destination LDAP"
     uri: ldaps://ldap.example.org
-    basedn: dc=z,adc=project,dc=example,dc=org
-    binddn: cn=admin,dc=z,adc=project,dc=example,dc=org
+    basedn: dc=z,dc=project,dc=example,dc=org
+    binddn: cn=admin,dc=z,dc=project,dc=example,dc=org
     passwd: SecreTwot
 ```
 
