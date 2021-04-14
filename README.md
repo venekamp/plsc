@@ -145,10 +145,6 @@ storage:
     - name: gidNumber
       minimum: 3000
       maximum: 4000
-  database:
-    username: plsc
-    password: test1234
-    table: delena
   file:
     path: generated-values.json
 ```
