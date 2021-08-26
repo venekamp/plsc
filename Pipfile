@@ -8,10 +8,10 @@ pylint = "*"
 
 [packages]
 click = "*"
-pyyaml = "*"
+pyyaml = ">=5.4"
 python-ldap = "*"
-jinja2 = "*"
-pyldap = "*"
+jinja2 = ">=2.11.3"
+pyldap = ">=3"
 
 [requires]
 python_version = "3.8"
